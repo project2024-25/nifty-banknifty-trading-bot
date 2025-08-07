@@ -1,0 +1,128 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nifty-banknifty-trading-bot"
+version = "0.1.0"
+description = "Autonomous options trading bot for Nifty and Bank Nifty"
+authors = [
+    {name = "Trading Bot Team", email = "team@example.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "kiteconnect==4.2.0",
+    "pandas==2.0.3",
+    "numpy==1.24.3",
+    "python-telegram-bot==20.7",
+    "supabase==2.3.0",
+    "scikit-learn==1.3.0",
+    "tensorflow==2.13.0",
+    "requests==2.31.0",
+    "beautifulsoup4==4.12.0",
+    "python-dotenv==1.0.0",
+    "pydantic==2.5.0",
+    "pydantic-settings==2.1.0",
+    "aiohttp==3.9.1",
+    "yfinance==0.2.18",
+    "ta-lib==0.4.28",
+    "python-dateutil==2.8.2",
+    "pytz==2023.3",
+    "boto3==1.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.0",
+    "pytest-cov==4.1.0",
+    "pytest-asyncio==0.23.0",
+    "black==23.12.0",
+    "pylint==3.0.0",
+    "mypy==1.7.0",
+    "flake8==6.1.0",
+    "bandit==1.7.5",
+    "factory-boy==3.3.0",
+    "freezegun==1.2.2",
+    "responses==0.24.0",
+    "pytest-mock==3.12.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pylint.messages_control]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0903",  # too-few-public-methods
+    "R0913",  # too-many-arguments
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+    "--tb=short",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "tests/*",
+    "*/venv/*",
+    "*/virtualenv/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(trading_bot_envScriptsactivate)",
+      "Bash(trading_bot_env\\Scripts\\activate.bat)",
+      "Bash(source:*)",
+      "Bash(mkdir:*)",
+      "Bash(pip install python-dotenv pydantic pydantic-settings)"
+    ],
+    "deny": []
+  }
+}

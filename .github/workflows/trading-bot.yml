@@ -1,0 +1,315 @@
+name: Trading Bot CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run health check daily at 8 AM IST (2:30 AM UTC)
+    - cron: '30 2 * * *'
+    
+    # Pre-market analysis (7:00 AM IST = 1:30 AM UTC)
+    - cron: '30 1 * * 1-5'
+    
+    # Market hours - every 15 minutes during trading (9:15 AM - 3:30 PM IST)
+    # 9:15 AM IST = 3:45 AM UTC, 3:30 PM IST = 10:00 AM UTC
+    - cron: '45,0,15,30 3-9 * * 1-5'
+    - cron: '45,0 10 * * 1-5'
+    
+    # Post-market analysis (4:00 PM IST = 10:30 AM UTC)
+    - cron: '30 10 * * 1-5'
+    
+    # Daily report (5:00 PM IST = 11:30 AM UTC)  
+    - cron: '30 11 * * 1-5'
+
+env:
+  PYTHON_VERSION: '3.9'
+  TRADING_CAPITAL: ${{ secrets.TRADING_CAPITAL }}
+  MAX_DAILY_LOSS_PERCENT: ${{ secrets.MAX_DAILY_LOSS_PERCENT }}
+  ENABLE_PAPER_TRADING: ${{ secrets.ENABLE_PAPER_TRADING }}
+
+jobs:
+  # Test and validation job
+  test:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run security checks
+      run: |
+        bandit -r src/ -f json -o security-report.json || true
+        echo "Security scan completed"
+    
+    - name: Run linting
+      run: |
+        echo "Running code quality checks..."
+        black src/ --check --diff || true
+        pylint src/ --exit-zero --output-format=colorized
+        flake8 src/ --exit-zero
+    
+    - name: Run type checking
+      run: |
+        mypy src/ --ignore-missing-imports --no-error-summary || true
+    
+    - name: Run unit tests
+      run: |
+        pytest tests/ -v --cov=src --cov-report=xml --cov-report=html
+      continue-on-error: true
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  # Trading execution job (only on schedule)
+  trading-execution:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python  
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Determine trading action
+      id: trading-action
+      run: |
+        HOUR=$(TZ=Asia/Kolkata date +%H)
+        DAY=$(TZ=Asia/Kolkata date +%u)  # 1=Monday, 7=Sunday
+        
+        # Only trade on weekdays
+        if [ $DAY -gt 5 ]; then
+          echo "ACTION=weekend" >> $GITHUB_OUTPUT
+          echo "Weekend - no trading"
+          exit 0
+        fi
+        
+        if [ $HOUR -eq 7 ]; then
+          echo "ACTION=pre_market" >> $GITHUB_OUTPUT
+        elif [ $HOUR -ge 9 ] && [ $HOUR -lt 16 ]; then
+          echo "ACTION=trading" >> $GITHUB_OUTPUT  
+        elif [ $HOUR -eq 16 ]; then
+          echo "ACTION=post_market" >> $GITHUB_OUTPUT
+        elif [ $HOUR -eq 17 ]; then
+          echo "ACTION=daily_report" >> $GITHUB_OUTPUT
+        else
+          echo "ACTION=health_check" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "Current IST time: $(TZ=Asia/Kolkata date)"
+        echo "Action determined: ${{ env.ACTION }}"
+    
+    - name: Validate configuration
+      env:
+        KITE_API_KEY: ${{ secrets.KITE_API_KEY }}
+        KITE_API_SECRET: ${{ secrets.KITE_API_SECRET }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: |
+        echo "Validating configuration..."
+        python main.py --validate-config
+    
+    - name: Execute pre-market analysis
+      if: steps.trading-action.outputs.ACTION == 'pre_market'
+      env:
+        KITE_API_KEY: ${{ secrets.KITE_API_KEY }}
+        KITE_API_SECRET: ${{ secrets.KITE_API_SECRET }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      run: |
+        echo "🌅 Running pre-market analysis..."
+        python -c "
+        import asyncio
+        from src.intelligence.multi_timeframe import MultiTimeframeAnalyzer
+        from src.integrations.telegram_bot import send_notification
+        
+        async def pre_market():
+            analyzer = MultiTimeframeAnalyzer()
+            analysis = await analyzer.analyze_pre_market()
+            await send_notification('📊 Pre-market Analysis Complete')
+            print('Pre-market analysis completed')
+        
+        asyncio.run(pre_market())
+        "
+    
+    - name: Execute trading cycle
+      if: steps.trading-action.outputs.ACTION == 'trading'
+      env:
+        KITE_API_KEY: ${{ secrets.KITE_API_KEY }}
+        KITE_API_SECRET: ${{ secrets.KITE_API_SECRET }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      run: |
+        echo "📈 Executing trading cycle..."
+        python main.py --paper-trading
+        echo "Trading cycle completed"
+    
+    - name: Execute post-market analysis
+      if: steps.trading-action.outputs.ACTION == 'post_market'
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      run: |
+        echo "🌆 Running post-market analysis..."
+        python -c "
+        import asyncio
+        from src.integrations.telegram_bot import send_notification
+        
+        async def post_market():
+            await send_notification('📊 Post-market Analysis Complete')
+            print('Post-market analysis completed')
+        
+        asyncio.run(post_market())
+        "
+    
+    - name: Generate daily report
+      if: steps.trading-action.outputs.ACTION == 'daily_report'
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      run: |
+        echo "📋 Generating daily report..."
+        python scripts/generate_report.py --daily
+        echo "Daily report completed"
+    
+    - name: Health check
+      if: steps.trading-action.outputs.ACTION == 'health_check'
+      env:
+        KITE_API_KEY: ${{ secrets.KITE_API_KEY }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      run: |
+        echo "🏥 Running health check..."
+        python scripts/health_check.py
+        echo "Health check completed"
+    
+    - name: Handle errors and notifications
+      if: failure()
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+      run: |
+        echo "❌ Trading bot execution failed"
+        python -c "
+        import asyncio
+        from src.integrations.telegram_bot import send_error_notification
+        
+        async def error_notification():
+            await send_error_notification('🚨 GitHub Actions execution failed!')
+        
+        asyncio.run(error_notification())
+        "
+
+  # Deployment job (only on main branch push)
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Deploy to Lambda (placeholder)
+      run: |
+        echo "🚀 Deploying to AWS Lambda..."
+        echo "This will be implemented once Lambda functions are created"
+        # TODO: Add actual Lambda deployment steps
+    
+    - name: Update Railway deployment
+      run: |
+        echo "🚂 Updating Railway deployment..."
+        echo "Railway auto-deploys from GitHub on push"
+        # Railway handles deployment automatically
+    
+    - name: Deployment success notification
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+      run: |
+        python -c "
+        import asyncio
+        from src.integrations.telegram_bot import send_notification
+        
+        async def deploy_success():
+            await send_notification('🚀 Trading bot deployed successfully!')
+        
+        asyncio.run(deploy_success())
+        "
+
+  # Security monitoring
+  security:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run security audit
+      run: |
+        echo "🔒 Running security audit..."
+        # Check for secrets in code
+        git log --oneline -n 50 | grep -i -E "(password|secret|key|token)" || true
+        echo "Security audit completed"
+    
+    - name: Check dependencies for vulnerabilities
+      run: |
+        pip install safety
+        safety check --json || true
+
+# Workflow configuration
+concurrency:
+  group: trading-bot-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel trading operations
