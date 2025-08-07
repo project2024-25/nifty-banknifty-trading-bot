@@ -1,0 +1,6 @@
+──────────────────────────────────────────────────────────────────────────────╮
+                                                        │
+│   Project password : Algotrading2025\                                          │
+│   URL: https://zndhtinssqalzshzpwny.supabase.co\                               │
+│   Anon key : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZGh0aW5zc3FhbHpzaHpwd255Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1NjgwNDcsImV4cCI6MjA3MDE0NDA0N30.J5pzZYlnIkgbSP2YnNjJOxs_ukpHXBskFFGHcqhoYVc
+    service role key : eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpuZGh0aW5zc3FhbHpzaHpwd255Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDU2ODA0NywiZXhwIjoyMDcwMTQ0MDQ3fQ.THG6MdB6CC5iRELsUhQQMVlAikhmNgC261iQCZIXmqU

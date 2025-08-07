@@ -8,6 +8,8 @@ import asyncio
 
 from src.utils.logger import get_logger
 from src.utils.constants import RISK_LIMITS
+from src.strategies.strategy_manager import StrategyManager
+from src.strategies.base_strategy import MarketData
 
 logger = get_logger(__name__)
 
@@ -18,11 +20,11 @@ class TradingEngine:
     def __init__(self):
         self.active = True
         self.paper_trading = True  # Start in paper trading mode
-        self.strategies = {}
         self.positions = {}
         self.daily_pnl = 0.0
         self.risk_manager = None
         self.broker = None
+        self.strategy_manager = None
         
         logger.info("Trading engine initialized", paper_trading=self.paper_trading)
     
@@ -52,8 +54,13 @@ class TradingEngine:
     
     async def _initialize_strategies(self):
         """Initialize trading strategies"""
-        # TODO: Load and initialize strategies
-        logger.info("Strategies initialized")
+        try:
+            self.strategy_manager = StrategyManager()
+            logger.info("Strategy manager initialized", 
+                       active_strategies=self.strategy_manager.get_active_strategies())
+        except Exception as e:
+            logger.error(f"Strategy initialization failed: {e}")
+            raise
     
     async def execute_trading_cycle(self) -> Dict[str, Any]:
         """Execute one complete trading cycle"""
@@ -103,52 +110,88 @@ class TradingEngine:
     
     async def _fetch_market_data(self) -> Dict[str, Any]:
         """Fetch current market data"""
-        # TODO: Implement market data fetching
+        # TODO: Implement real market data fetching via Kite Connect
+        # For now, return mock data with realistic values
         return {
-            "NIFTY": {"price": 20000, "iv": 15.5},
-            "BANKNIFTY": {"price": 45000, "iv": 16.2}
+            "NIFTY": MarketData(
+                symbol="NIFTY",
+                spot_price=24000.0,
+                iv=25.0,
+                volume=500000,
+                oi=100000,
+                last_updated=datetime.now()
+            ),
+            "BANKNIFTY": MarketData(
+                symbol="BANKNIFTY",
+                spot_price=50000.0,
+                iv=30.0,
+                volume=300000,
+                oi=80000,
+                last_updated=datetime.now()
+            )
         }
     
-    async def _generate_signals(self, market_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _generate_signals(self, market_data: Dict[str, Any]) -> List[Any]:
         """Generate signals from all active strategies"""
-        signals = []
+        all_signals = []
         
-        for strategy_name, strategy in self.strategies.items():
-            try:
-                if strategy.active:
-                    signal = await strategy.generate_signal(market_data)
-                    if signal:
-                        signals.append(signal)
-                        logger.info(
-                            "Signal generated",
-                            strategy=strategy_name,
-                            symbol=signal.get('symbol'),
-                            confidence=signal.get('confidence')
-                        )
-            except Exception as e:
-                logger.error(f"Signal generation failed for {strategy_name}: {e}")
+        if not self.strategy_manager:
+            logger.warning("Strategy manager not initialized")
+            return all_signals
         
-        return signals
+        try:
+            # Generate signals for each market data entry
+            for symbol, data in market_data.items():
+                signals = await self.strategy_manager.generate_signals(data)
+                all_signals.extend(signals)
+                
+                if signals:
+                    logger.info(
+                        "Signals generated",
+                        symbol=symbol,
+                        signal_count=len(signals),
+                        strategies=list(set(s.strategy_name for s in signals))
+                    )
+            
+        except Exception as e:
+            logger.error(f"Signal generation failed: {e}")
+        
+        return all_signals
     
-    async def _validate_signals(self, signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _validate_signals(self, signals: List[Any]) -> List[Any]:
         """Validate signals through risk management"""
+        # Signals are already validated by StrategyManager
+        # Additional validation can be added here if needed
+        
         validated_signals = []
         
         for signal in signals:
             try:
-                if self.risk_manager and await self.risk_manager.validate_signal(signal):
+                # Basic validation checks
+                if (signal.confidence_score >= 0.6 and 
+                    signal.max_loss <= 5000):  # Max 5k loss per trade
                     validated_signals.append(signal)
+                    logger.info(
+                        "Signal validated",
+                        strategy=signal.strategy_name,
+                        symbol=signal.symbol,
+                        confidence=signal.confidence_score
+                    )
                 else:
                     logger.warning(
-                        "Signal rejected by risk management",
-                        signal=signal
+                        "Signal rejected by validation",
+                        strategy=signal.strategy_name,
+                        symbol=signal.symbol,
+                        confidence=signal.confidence_score,
+                        max_loss=signal.max_loss
                     )
+                    
             except Exception as e:
                 logger.error(f"Signal validation failed: {e}")
         
         return validated_signals
     
-    async def _execute_trades(self, signals: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def _execute_trades(self, signals: List[Any]) -> List[Dict[str, Any]]:
         """Execute validated trading signals"""
         executed_trades = []
         
@@ -163,30 +206,58 @@ class TradingEngine:
                 
                 if trade:
                     executed_trades.append(trade)
-                    logger.trade_executed(trade)
+                    logger.info("Trade executed", trade_id=trade.get('id'), 
+                               strategy=trade.get('strategy'))
                     
             except Exception as e:
-                logger.error(f"Trade execution failed: {e}", signal=signal)
+                logger.error(f"Trade execution failed: {e}", 
+                           strategy=signal.strategy_name, symbol=signal.symbol)
         
         return executed_trades
     
-    async def _execute_paper_trade(self, signal: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_paper_trade(self, signal: Any) -> Dict[str, Any]:
         """Execute trade in paper trading mode"""
-        # TODO: Implement paper trading logic
+        trade_id = f"PAPER_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{signal.symbol}"
+        
         trade = {
-            "id": f"PAPER_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            "symbol": signal.get('symbol'),
-            "strategy": signal.get('strategy'),
+            "id": trade_id,
+            "symbol": signal.symbol,
+            "strategy": signal.strategy_name,
             "type": "PAPER",
             "status": "EXECUTED",
-            "timestamp": datetime.now()
+            "legs": len(signal.legs),
+            "max_profit": signal.max_profit,
+            "max_loss": signal.max_loss,
+            "confidence": signal.confidence_score,
+            "timestamp": datetime.now(),
+            "expiry": signal.expiry_date
         }
+        
+        # Store position for tracking
+        self.positions[trade_id] = {
+            "signal": signal,
+            "entry_time": datetime.now(),
+            "status": "OPEN",
+            "current_pnl": 0.0
+        }
+        
+        logger.info(
+            "Paper trade executed",
+            trade_id=trade_id,
+            strategy=signal.strategy_name,
+            symbol=signal.symbol,
+            max_profit=signal.max_profit,
+            max_loss=signal.max_loss
+        )
+        
         return trade
     
-    async def _execute_live_trade(self, signal: Dict[str, Any]) -> Dict[str, Any]:
+    async def _execute_live_trade(self, signal: Any) -> Dict[str, Any]:
         """Execute trade in live trading mode"""
         # TODO: Implement live trading via Kite Connect
-        pass
+        logger.warning("Live trading not yet implemented", 
+                      strategy=signal.strategy_name, symbol=signal.symbol)
+        return None
     
     async def _update_positions(self):
         """Update position tracking and P&L calculations"""
@@ -224,10 +295,15 @@ class TradingEngine:
         
     def get_status(self) -> Dict[str, Any]:
         """Get current trading status"""
+        strategy_count = 0
+        if self.strategy_manager:
+            strategy_count = len(self.strategy_manager.get_active_strategies())
+            
         return {
             "active": self.active,
             "paper_trading": self.paper_trading,
             "daily_pnl": self.daily_pnl,
             "open_positions": len(self.positions),
-            "strategies_active": sum(1 for s in self.strategies.values() if s.active)
+            "strategies_active": strategy_count,
+            "market_open": self._is_market_open()
         }

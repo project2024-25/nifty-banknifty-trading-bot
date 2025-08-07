@@ -1,0 +1,72 @@
+[
+  {
+    "timestamp": "2025-08-07T21:28:42.753557",
+    "regime": "sideways_low_vol",
+    "volatility_regime": "medium",
+    "confidence": 0.45000000000000007,
+    "strategies_count": 0,
+    "signals_count": 0,
+    "capital_deployed": 0,
+    "risk_utilization": 0
+  },
+  {
+    "timestamp": "2025-08-07T21:28:43.775259",
+    "regime": "sideways_low_vol",
+    "volatility_regime": "medium",
+    "confidence": 0.45000000000000007,
+    "strategies_count": 1,
+    "signals_count": 1,
+    "capital_deployed": 4917.820000000001,
+    "risk_utilization": 0.009835640000000001
+  },
+  {
+    "timestamp": "2025-08-07T21:28:44.789840",
+    "regime": "sideways_high_vol",
+    "volatility_regime": "high",
+    "confidence": 0.45000000000000007,
+    "strategies_count": 1,
+    "signals_count": 1,
+    "capital_deployed": 0,
+    "risk_utilization": 0
+  },
+  {
+    "timestamp": "2025-08-07T21:28:45.796960",
+    "regime": "sideways_high_vol",
+    "volatility_regime": "high",
+    "confidence": 0.45000000000000007,
+    "strategies_count": 1,
+    "signals_count": 1,
+    "capital_deployed": 3308.760000000001,
+    "risk_utilization": 0.006617520000000003
+  },
+  {
+    "timestamp": "2025-08-07T21:28:46.804078",
+    "regime": "sideways_high_vol",
+    "volatility_regime": "high",
+    "confidence": 0.45000000000000007,
+    "strategies_count": 1,
+    "signals_count": 1,
+    "capital_deployed": 0,
+    "risk_utilization": 0
+  },
+  {
+    "timestamp": "2025-08-07T21:28:47.823855",
+    "regime": "sideways_low_vol",
+    "volatility_regime": "medium",
+    "confidence": 0.45000000000000007,
+    "strategies_count": 1,
+    "signals_count": 1,
+    "capital_deployed": 4933.799999999999,
+    "risk_utilization": 0.009867599999999999
+  },
+  {
+    "timestamp": "2025-08-07T21:28:48.828032",
+    "regime": "sideways_low_vol",
+    "volatility_regime": "medium",
+    "confidence": 0.45000000000000007,
+    "strategies_count": 1,
+    "signals_count": 2,
+    "capital_deployed": 9872.160000000018,
+    "risk_utilization": 0.019744320000000037
+  }
+]
