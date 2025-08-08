@@ -169,6 +169,7 @@ custom:
   # Python requirements configuration
   pythonRequirements:
     dockerizePip: true
+    fileName: lambda_functions/requirements.txt
     layer:
       name: ${self:service}-dependencies
       description: Dependencies for trading bot
