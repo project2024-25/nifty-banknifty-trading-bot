@@ -71,8 +71,6 @@ functions:
           path: trading/execute
           method: post
           private: false
-    layers:
-      - ${cf:trading-bot-dependencies.TradingBotDependenciesLayerExport}
 
   # Pre-market analysis function
   preMarketAnalysis:
@@ -84,8 +82,6 @@ functions:
           enabled: true
           input:
             action: pre_market
-    layers:
-      - ${cf:trading-bot-dependencies.TradingBotDependenciesLayerExport}
 
   # Post-market reporting function  
   postMarketReporting:
@@ -97,8 +93,6 @@ functions:
           enabled: true
           input:
             action: post_market
-    layers:
-      - ${cf:trading-bot-dependencies.TradingBotDependenciesLayerExport}
 
   # YouTube analysis function
   youtubeAnalysis:
@@ -110,8 +104,6 @@ functions:
           enabled: true
           input:
             action: youtube_analysis
-    layers:
-      - ${cf:trading-bot-dependencies.TradingBotDependenciesLayerExport}
 
 # CloudFormation resources
 resources:
