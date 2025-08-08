@@ -193,7 +193,7 @@ async def execute_kite_trading():
 📱 **Mode:** {'Paper Trading' if config['enable_paper_trading'] else 'Live Trading'}
 🕐 **Time:** {datetime.now().strftime('%H:%M:%S IST')}"""
                         
-                        await notifier.send_notification(msg)
+                        notifier.send_notification(msg)
                     
                     return result
                     
@@ -249,7 +249,7 @@ async def async_lambda_handler(event, context):
             logger.info(message)
             
             if notifier:
-                await notifier.send_notification(f"⏰ **Trading Bot Status**\n\n{message}")
+                notifier.send_notification(f"⏰ **Trading Bot Status**\n\n{message}")
             
             return {
                 'statusCode': 200,
@@ -286,7 +286,7 @@ async def async_lambda_handler(event, context):
 
 ⏱️ **Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}"""
             
-            await notifier.send_notification(success_msg)
+            notifier.send_notification(success_msg)
         
         return {
             'statusCode': 200,
@@ -304,7 +304,7 @@ async def async_lambda_handler(event, context):
         logger.error(error_msg, exc_info=True)
         
         if notifier:
-            await notifier.send_notification(f"🚨 **Trading Error**\n\n{error_msg}")
+            notifier.send_notification(f"🚨 **Trading Error**\n\n{error_msg}")
         
         return {
             'statusCode': 500,
