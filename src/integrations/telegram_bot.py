@@ -39,3 +39,19 @@ class TradingBotTelegram:
 def create_telegram_bot(bot_token: str, user_id: int) -> TradingBotTelegram:
     """Create a stub telegram bot for compatibility"""
     return TradingBotTelegram(bot_token, user_id)
+
+# Module-level functions for compatibility
+async def send_notification(message: str, bot_token: str = None, user_id: str = None) -> bool:
+    """Module-level send_notification function for compatibility"""
+    logger.info(f"Module-level notification (stub): {message[:100]}...")
+    return True
+
+async def send_trade_notification(trade_data: dict, bot_token: str = None, user_id: str = None) -> bool:
+    """Module-level send_trade_notification function for compatibility"""
+    logger.info(f"Module-level trade notification (stub): {trade_data}")
+    return True
+
+async def send_daily_summary(summary_data: dict, bot_token: str = None, user_id: str = None) -> bool:
+    """Module-level send_daily_summary function for compatibility"""
+    logger.info(f"Module-level daily summary (stub): {summary_data}")
+    return True
