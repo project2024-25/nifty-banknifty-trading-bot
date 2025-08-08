@@ -10,7 +10,7 @@ on:
       - 'src/**'
       - 'lambda_functions/**'
       - 'serverless.yml'
-      - 'requirements.txt'
+      - 'lambda_functions/requirements.txt'
   workflow_dispatch: # Allow manual triggering
     inputs:
       stage:
@@ -45,14 +45,14 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('lambda_functions/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
           
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r lambda_functions/requirements.txt
         pip install pytest pytest-cov
         
     - name: Run tests
@@ -126,7 +126,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('lambda_functions/requirements.txt') }}
         
     - name: Set up environment variables
       run: |
