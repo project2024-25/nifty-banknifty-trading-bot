@@ -58,7 +58,7 @@ provider:
 functions:
   # Main trading function - executes during market hours
   mainTrading:
-    handler: lambda_functions/main_trading/lambda_function.lambda_handler
+    handler: lambda_functions/main_trading/simple_lambda.lambda_handler
     description: Main trading logic execution during market hours
     events:
       - schedule:
