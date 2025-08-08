@@ -261,11 +261,36 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Deploy to Lambda (placeholder)
+    - name: Set up Node.js for Serverless
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install Serverless Framework
+      run: |
+        npm install -g serverless
+        npm install serverless-python-requirements serverless-plugin-aws-alerts
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+        
+    - name: Deploy to Lambda
+      env:
+        KITE_API_KEY: ${{ secrets.KITE_API_KEY }}
+        KITE_API_SECRET: ${{ secrets.KITE_API_SECRET }}
+        KITE_ACCESS_TOKEN: ${{ secrets.KITE_ACCESS_TOKEN }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_USER_ID: ${{ secrets.TELEGRAM_USER_ID }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        ENABLE_PAPER_TRADING: ${{ secrets.ENABLE_PAPER_TRADING }}
       run: |
         echo "🚀 Deploying to AWS Lambda..."
-        echo "This will be implemented once Lambda functions are created"
-        # TODO: Add actual Lambda deployment steps
+        serverless deploy --stage dev --verbose
     
     - name: Update Railway deployment
       run: |
