@@ -108,24 +108,7 @@ functions:
 # CloudFormation resources
 resources:
   Resources:
-    # CloudWatch Log Groups with retention
-    MainTradingLogGroup:
-      Type: AWS::Logs::LogGroup
-      Properties:
-        LogGroupName: /aws/lambda/nifty-banknifty-trading-bot-${self:provider.stage}-mainTrading
-        RetentionInDays: 14
-
-    PreMarketLogGroup:
-      Type: AWS::Logs::LogGroup
-      Properties:
-        LogGroupName: /aws/lambda/nifty-banknifty-trading-bot-${self:provider.stage}-preMarketAnalysis
-        RetentionInDays: 14
-
-    PostMarketLogGroup:
-      Type: AWS::Logs::LogGroup
-      Properties:
-        LogGroupName: /aws/lambda/nifty-banknifty-trading-bot-${self:provider.stage}-postMarketReporting
-        RetentionInDays: 14
+    # CloudWatch Log Groups will be created automatically by Lambda
 
     # CloudWatch Alarms for monitoring
     TradingErrorAlarm:
