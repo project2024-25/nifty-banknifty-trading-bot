@@ -142,13 +142,14 @@ plugins:
 custom:
   # Python requirements configuration
   pythonRequirements:
-    dockerizePip: false
+    dockerizePip: true
     fileName: lambda_functions/lambda_requirements.txt
-    # Use slim packaging without layer to avoid 250MB limit
+    # Enable Docker for proper compilation of C extensions
     slim: true
     strip: false
-    noDeps: false
     zip: true
+    pipCmdExtraArgs:
+      - --no-cache-dir
 
   # Alerts configuration (disabled for simpler deployment)
   # alerts:

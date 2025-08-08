@@ -12,3 +12,7 @@ supabase==2.3.0
 
 # Data validation (lightweight)
 pydantic==2.5.0
+
+# Additional KiteConnect dependencies
+urllib3==1.26.18
+six==1.16.0
