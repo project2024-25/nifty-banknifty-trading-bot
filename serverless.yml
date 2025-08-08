@@ -142,14 +142,13 @@ plugins:
 custom:
   # Python requirements configuration
   pythonRequirements:
-    dockerizePip: true
+    dockerizePip: false
     fileName: lambda_functions/lambda_requirements.txt
-    layer:
-      name: ${self:service}-dependencies
-      description: Dependencies for trading bot
-      compatibleRuntimes:
-        - python3.9
-      retain: false
+    # Use slim packaging without layer to avoid 250MB limit
+    slim: true
+    strip: false
+    noDeps: false
+    zip: true
 
   # Alerts configuration (disabled for simpler deployment)
   # alerts:
