@@ -289,7 +289,7 @@ jobs:
         serverless --version
         npm list -g serverless
         
-    - name: Check stack status
+    - name: Handle stack cleanup automatically
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -300,16 +300,33 @@ jobs:
         echo "Current stack status: $STACK_STATUS"
         
         if [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
-          echo "❌ Stack is in DELETE_FAILED state. Please run cleanup-stack.sh manually or use AWS Console to delete the stack."
-          echo "Then re-run this deployment."
-          exit 1
+          echo "🚨 Stack is in DELETE_FAILED state, running automated cleanup..."
+          chmod +x cleanup-stack.sh
+          ./cleanup-stack.sh
+          
+          # Wait for cleanup to propagate
+          echo "⏳ Waiting 2 minutes for cleanup to propagate..."
+          sleep 120
+          
+          # Check status again
+          FINAL_STATUS=$(aws cloudformation describe-stacks --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+          echo "Final stack status after cleanup: $FINAL_STATUS"
+          
+          if [ "$FINAL_STATUS" != "DOES_NOT_EXIST" ]; then
+            echo "❌ Stack cleanup failed. Manual intervention required."
+            exit 1
+          fi
+          
         elif [ "$STACK_STATUS" = "DOES_NOT_EXIST" ]; then
           echo "✅ No existing stack found, ready for fresh deployment"
         else
           echo "ℹ️ Stack exists with status: $STACK_STATUS"
           echo "Attempting normal serverless remove..."
           serverless remove --stage dev --verbose || echo "Remove failed, continuing with deployment"
+          sleep 30
         fi
+        
+        echo "✅ Stack cleanup completed, proceeding with deployment"
         
     - name: Deploy to Lambda
       env:
