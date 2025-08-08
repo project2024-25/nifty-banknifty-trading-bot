@@ -1,0 +1,17 @@
+# Minimal requirements for Railway Telegram bot server
+# Only absolute essentials to avoid build failures
+
+# Telegram Bot (core functionality)
+python-telegram-bot==20.7
+
+# Basic data processing  
+requests==2.31.0
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Async web server for health checks
+aiohttp==3.8.6
+
+# Basic utilities
+python-dateutil==2.8.2

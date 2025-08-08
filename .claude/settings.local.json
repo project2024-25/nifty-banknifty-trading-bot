@@ -8,7 +8,10 @@
       "Bash(mkdir:*)",
       "Bash(pip install python-dotenv pydantic pydantic-settings)",
       "Bash(find:*)",
-      "Bash(trading_bot_envScriptsactivate.bat)"
+      "Bash(trading_bot_envScriptsactivate.bat)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
