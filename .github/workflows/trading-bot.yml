@@ -261,6 +261,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
     - name: Set up Node.js for Serverless
       uses: actions/setup-node@v3
       with:
@@ -268,8 +273,8 @@ jobs:
         
     - name: Install Serverless Framework
       run: |
-        npm install -g serverless
-        npm install serverless-python-requirements serverless-plugin-aws-alerts
+        npm install -g serverless@3
+        npm install serverless-python-requirements@5.4.0 serverless-plugin-aws-alerts@1.2.4
         
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v2
@@ -277,6 +282,12 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
+        
+    - name: Verify Serverless Installation
+      run: |
+        echo "Checking Serverless Framework version..."
+        serverless --version
+        npm list -g serverless
         
     - name: Deploy to Lambda
       env:
@@ -290,6 +301,8 @@ jobs:
         ENABLE_PAPER_TRADING: ${{ secrets.ENABLE_PAPER_TRADING }}
       run: |
         echo "🚀 Deploying to AWS Lambda..."
+        echo "Current directory: $(pwd)"
+        echo "Serverless config file exists: $(ls -la serverless.yml)"
         serverless deploy --stage dev --verbose
     
     - name: Update Railway deployment
