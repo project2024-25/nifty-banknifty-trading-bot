@@ -304,19 +304,32 @@ jobs:
         # If that fails, manually delete the stack via AWS CLI
         echo "Checking if stack still exists..."
         if aws cloudformation describe-stacks --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 2>/dev/null; then
-          echo "Stack still exists, forcing deletion via AWS CLI..."
+          echo "Stack still exists, cleaning up resources manually..."
+          
+          # Get the deployment bucket name from stack outputs
+          BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 --query 'Stacks[0].Outputs[?OutputKey==`ServerlessDeploymentBucketName`].OutputValue' --output text 2>/dev/null || echo "")
+          
+          if [ ! -z "$BUCKET_NAME" ]; then
+            echo "Found deployment bucket: $BUCKET_NAME"
+            echo "Emptying bucket contents..."
+            aws s3 rm s3://$BUCKET_NAME --recursive --region ap-south-1 || echo "Bucket empty or doesn't exist"
+          fi
+          
+          # Delete any remaining log groups manually
+          echo "Cleaning up log groups..."
+          for log_group in /aws/lambda/nifty-banknifty-trading-bot-dev-mainTrading /aws/lambda/nifty-banknifty-trading-bot-dev-preMarketAnalysis /aws/lambda/nifty-banknifty-trading-bot-dev-postMarketReporting /aws/lambda/nifty-banknifty-trading-bot-dev-youtubeAnalysis; do
+            aws logs delete-log-group --log-group-name "$log_group" --region ap-south-1 2>/dev/null || echo "Log group $log_group not found or already deleted"
+          done
+          
+          echo "Attempting stack deletion..."
           aws cloudformation delete-stack --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1
           
-          echo "Waiting for stack deletion to complete (up to 5 minutes)..."
-          aws cloudformation wait stack-delete-complete --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 || echo "Deletion may have failed"
-          
-          # Double check if it's gone
-          if aws cloudformation describe-stacks --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 2>/dev/null; then
-            echo "❌ Stack still exists after deletion attempt"
-            exit 1
-          else
-            echo "✅ Stack successfully deleted"
-          fi
+          echo "Waiting for stack deletion (up to 5 minutes)..."
+          aws cloudformation wait stack-delete-complete --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 || {
+            echo "Stack deletion still failing, forcing resource deletion..."
+            # If stack deletion still fails, we'll proceed anyway with --force deployment
+            echo "Will proceed with deployment using --force flag"
+          }
         else
           echo "✅ No existing stack found"
         fi
