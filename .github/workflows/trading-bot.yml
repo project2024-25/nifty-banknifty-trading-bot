@@ -295,14 +295,30 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ap-south-1
       run: |
-        echo "🧹 Checking for existing stack..."
-        # Check if stack exists and remove it to avoid conflicts
+        echo "🧹 Force cleanup of existing stack..."
+        
+        # Try serverless remove first
+        echo "Attempting serverless remove..."
+        serverless remove --stage dev --verbose || echo "Serverless remove failed, trying AWS CLI"
+        
+        # If that fails, manually delete the stack via AWS CLI
+        echo "Checking if stack still exists..."
         if aws cloudformation describe-stacks --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 2>/dev/null; then
-          echo "Stack exists, removing it first..."
-          serverless remove --stage dev --verbose || echo "Remove failed or stack doesn't exist"
-          sleep 30  # Wait for complete cleanup
+          echo "Stack still exists, forcing deletion via AWS CLI..."
+          aws cloudformation delete-stack --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1
+          
+          echo "Waiting for stack deletion to complete (up to 5 minutes)..."
+          aws cloudformation wait stack-delete-complete --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 || echo "Deletion may have failed"
+          
+          # Double check if it's gone
+          if aws cloudformation describe-stacks --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 2>/dev/null; then
+            echo "❌ Stack still exists after deletion attempt"
+            exit 1
+          else
+            echo "✅ Stack successfully deleted"
+          fi
         else
-          echo "No existing stack found, proceeding with fresh deployment"
+          echo "✅ No existing stack found"
         fi
         
     - name: Deploy to Lambda
