@@ -31,28 +31,28 @@ provider:
           Resource:
             - 'arn:aws:ssm:${self:provider.region}:*:parameter/trading-bot/*'
 
-  # Environment variables (will be set via AWS Systems Manager)
+  # Environment variables
   environment:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
     
-    # Trading configuration
-    TRADING_CAPITAL: ${env:TRADING_CAPITAL, '100000'}
-    MAX_DAILY_LOSS_PERCENT: ${env:MAX_DAILY_LOSS_PERCENT, '3'}
-    ENABLE_PAPER_TRADING: ${env:ENABLE_PAPER_TRADING, 'true'}
+    # Trading API credentials
+    KITE_API_KEY: ${env:KITE_API_KEY}
+    KITE_API_SECRET: ${env:KITE_API_SECRET}
+    KITE_ACCESS_TOKEN: ${env:KITE_ACCESS_TOKEN}
     
-    # Kite Connect credentials (stored in AWS Parameter Store)
-    KITE_API_KEY: ${ssm:/trading-bot/kite/api-key}
-    KITE_API_SECRET: ${ssm:/trading-bot/kite/api-secret}
-    KITE_ACCESS_TOKEN: ${ssm:/trading-bot/kite/access-token}
-    
-    # Telegram credentials
-    TELEGRAM_BOT_TOKEN: ${ssm:/trading-bot/telegram/bot-token}
-    TELEGRAM_USER_ID: ${ssm:/trading-bot/telegram/user-id}
+    # Telegram bot credentials
+    TELEGRAM_BOT_TOKEN: ${env:TELEGRAM_BOT_TOKEN}
+    TELEGRAM_USER_ID: ${env:TELEGRAM_USER_ID}
     
     # Database credentials
-    SUPABASE_URL: ${ssm:/trading-bot/supabase/url}
-    SUPABASE_KEY: ${ssm:/trading-bot/supabase/key}
+    SUPABASE_URL: ${env:SUPABASE_URL}
+    SUPABASE_KEY: ${env:SUPABASE_KEY}
+    
+    # Trading configuration
+    TRADING_CAPITAL: ${env:TRADING_CAPITAL, '100000'}
+    ENABLE_PAPER_TRADING: ${env:ENABLE_PAPER_TRADING, 'true'}
+    MAX_DAILY_LOSS_PERCENT: ${env:MAX_DAILY_LOSS_PERCENT, '3'}
 
 # Lambda functions
 functions:
