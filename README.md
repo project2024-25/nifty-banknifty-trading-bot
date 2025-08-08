@@ -2,6 +2,8 @@
 
 An autonomous, AI-powered options trading system focused exclusively on Nifty and Bank Nifty options. Built with serverless architecture using free-tier cloud services.
 
+🚀 **Status: Production Ready - AWS Lambda & Railway Deployment Configured**
+
 ## Features
 
 - **Fully Autonomous Trading**: Executes trades without manual intervention
