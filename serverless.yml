@@ -138,18 +138,20 @@ plugins:
 
 # Custom configuration
 custom:
-  # Python requirements configuration - Use Layer for better compatibility
+  # Python requirements configuration - Force inline packaging
   pythonRequirements:
     dockerizePip: true
     fileName: lambda_functions/lambda_requirements.txt
-    # Use Lambda Layer instead of inline packaging
-    layer: true
+    # Force inline packaging - no layer
+    layer: false
     slim: false
     strip: false
+    zip: false
     pipCmdExtraArgs:
       - --no-cache-dir
       - --verbose
-    pythonBin: python3
+      - --force-reinstall
+    pythonBin: python3.9
 
   # Alerts configuration (disabled for simpler deployment)
   # alerts:

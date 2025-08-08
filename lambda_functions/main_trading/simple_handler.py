@@ -104,21 +104,38 @@ async def execute_kite_trading():
                 
             except ImportError as import_error:
                 logger.error(f"❌ Failed to import kiteconnect: {import_error}")
-                logger.info("Checking if kiteconnect files exist...")
                 
-                # Check common locations
-                possible_paths = ['/opt/python', '/var/task', '/var/runtime']
-                for path in possible_paths:
-                    if os.path.exists(path):
-                        try:
-                            contents = os.listdir(path)
-                            kite_files = [f for f in contents if 'kite' in f.lower()]
-                            if kite_files:
-                                logger.info(f"Found kite files in {path}: {kite_files}")
-                        except:
-                            pass
-                
-                raise import_error
+                # Try runtime installation as fallback
+                logger.info("Attempting runtime installation of kiteconnect...")
+                try:
+                    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
+                    from install_kiteconnect import install_kiteconnect
+                    
+                    if install_kiteconnect():
+                        logger.info("Runtime installation successful, trying import again...")
+                        import kiteconnect
+                        from kiteconnect import KiteConnect
+                        logger.info("✅ KiteConnect imported after runtime installation!")
+                    else:
+                        raise ImportError("Runtime installation failed")
+                        
+                except Exception as runtime_error:
+                    logger.error(f"Runtime installation failed: {runtime_error}")
+                    
+                    # Final debugging - check file system
+                    logger.info("Checking if kiteconnect files exist...")
+                    possible_paths = ['/opt/python', '/var/task', '/var/runtime', '/tmp']
+                    for path in possible_paths:
+                        if os.path.exists(path):
+                            try:
+                                contents = os.listdir(path)
+                                kite_files = [f for f in contents if 'kite' in f.lower()]
+                                if kite_files:
+                                    logger.info(f"Found kite files in {path}: {kite_files}")
+                            except:
+                                pass
+                    
+                    raise import_error
             
             if not config['kite_api_key']:
                 logger.warning("Kite API key not configured")
