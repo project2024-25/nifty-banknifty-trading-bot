@@ -4,7 +4,7 @@ pandas==2.0.3
 numpy==1.24.3
 
 # Telegram Bot
-python-telegram-bot==20.7
+python-telegram-bot==22.3
 
 # Database
 supabase==2.3.0

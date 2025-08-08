@@ -6,7 +6,9 @@
       "Bash(trading_bot_env\\Scripts\\activate.bat)",
       "Bash(source:*)",
       "Bash(mkdir:*)",
-      "Bash(pip install python-dotenv pydantic pydantic-settings)"
+      "Bash(pip install python-dotenv pydantic pydantic-settings)",
+      "Bash(find:*)",
+      "Bash(trading_bot_envScriptsactivate.bat)"
     ],
     "deny": []
   }
