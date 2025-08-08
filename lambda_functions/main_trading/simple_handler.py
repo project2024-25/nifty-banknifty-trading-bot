@@ -63,7 +63,19 @@ async def execute_kite_trading():
         
         # Try to import and use Kite Connect
         try:
+            import sys
+            logger.info(f"Python path: {sys.path}")
+            
+            # List installed packages for debugging
+            try:
+                import pkg_resources
+                installed_packages = [d.project_name for d in pkg_resources.working_set]
+                logger.info(f"Installed packages: {installed_packages[:10]}...")  # Show first 10
+            except:
+                logger.info("Could not list installed packages")
+            
             from kiteconnect import KiteConnect
+            logger.info("✅ KiteConnect imported successfully!")
             
             if not config['kite_api_key']:
                 logger.warning("Kite API key not configured")

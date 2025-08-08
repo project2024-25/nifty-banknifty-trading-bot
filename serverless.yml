@@ -138,16 +138,18 @@ plugins:
 
 # Custom configuration
 custom:
-  # Python requirements configuration
+  # Python requirements configuration - Ultra minimal for KiteConnect
   pythonRequirements:
     dockerizePip: true
     fileName: lambda_functions/lambda_requirements.txt
-    # Enable Docker for proper compilation of C extensions
-    slim: true
+    # Optimize for KiteConnect installation
+    slim: false
     strip: false
     zip: true
     pipCmdExtraArgs:
       - --no-cache-dir
+      - --verbose
+    pythonBin: python3
 
   # Alerts configuration (disabled for simpler deployment)
   # alerts:

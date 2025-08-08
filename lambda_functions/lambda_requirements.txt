@@ -1,18 +1,9 @@
-# Minimal Lambda requirements - under 250MB limit
-# Essential packages only for trading functionality
+# Ultra minimal Lambda requirements - KiteConnect only
+# Removing heavy packages to ensure KiteConnect installs
 
-# Core trading dependencies
+# Core trading API - ESSENTIAL
 kiteconnect==5.0.1
+
+# Basic HTTP and utilities
 requests==2.31.0
 python-dotenv==1.0.0
-python-dateutil==2.8.2
-
-# Database
-supabase==2.3.0
-
-# Data validation (lightweight)
-pydantic==2.5.0
-
-# Additional KiteConnect dependencies
-urllib3==1.26.18
-six==1.16.0
