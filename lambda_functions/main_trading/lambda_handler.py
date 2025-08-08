@@ -55,6 +55,9 @@ try:
 except ImportError as e:
     logger.warning(f"Full trading engine not available: {e}")
     TRADING_ENGINE_AVAILABLE = False
+    # Create dummy class for type safety
+    class TradingEngine:
+        pass
 
 def is_market_hours() -> bool:
     """Check if current time is within market hours (9:15 AM - 3:30 PM IST)."""
@@ -122,7 +125,8 @@ async def initialize_trading_system():
                 # Set broker if available
                 if hasattr(trading_engine, 'set_broker'):
                     trading_engine.set_broker(kite_wrapper)
-                await trading_engine.initialize()
+                if hasattr(trading_engine, 'initialize'):
+                    await trading_engine.initialize()
                 logger.info("Advanced trading engine initialized successfully")
             except Exception as e:
                 logger.warning(f"Could not initialize full trading engine: {e}")
@@ -140,7 +144,7 @@ async def initialize_trading_system():
         logger.error(f"Failed to initialize trading system: {e}")
         raise
 
-async def execute_market_analysis(engine: TradingEngine, config: Config) -> Dict[str, Any]:
+async def execute_market_analysis(engine, config) -> Dict[str, Any]:
     """Execute comprehensive market analysis using the intelligence systems."""
     try:
         logger.info("🧠 Starting advanced market analysis...")
