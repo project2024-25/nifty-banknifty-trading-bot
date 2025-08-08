@@ -289,6 +289,22 @@ jobs:
         serverless --version
         npm list -g serverless
         
+    - name: Clean existing stack (if needed)
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ap-south-1
+      run: |
+        echo "🧹 Checking for existing stack..."
+        # Check if stack exists and remove it to avoid conflicts
+        if aws cloudformation describe-stacks --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 2>/dev/null; then
+          echo "Stack exists, removing it first..."
+          serverless remove --stage dev --verbose || echo "Remove failed or stack doesn't exist"
+          sleep 30  # Wait for complete cleanup
+        else
+          echo "No existing stack found, proceeding with fresh deployment"
+        fi
+        
     - name: Deploy to Lambda
       env:
         KITE_API_KEY: ${{ secrets.KITE_API_KEY }}
@@ -303,7 +319,7 @@ jobs:
         echo "🚀 Deploying to AWS Lambda..."
         echo "Current directory: $(pwd)"
         echo "Serverless config file exists: $(ls -la serverless.yml)"
-        serverless deploy --stage dev --verbose
+        serverless deploy --stage dev --verbose --force
     
     - name: Update Railway deployment
       run: |
