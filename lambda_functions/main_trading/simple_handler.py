@@ -61,21 +61,64 @@ async def execute_kite_trading():
     try:
         config = get_config()
         
-        # Try to import and use Kite Connect
+        # Try to import and use Kite Connect with extensive debugging
         try:
             import sys
+            import os
+            logger.info(f"Python version: {sys.version}")
             logger.info(f"Python path: {sys.path}")
+            logger.info(f"Working directory: {os.getcwd()}")
+            logger.info(f"Directory contents: {os.listdir('.')}")
+            
+            # Check if we're in Lambda environment
+            if '/opt/python' in sys.path:
+                logger.info("Lambda layer path detected")
+                if os.path.exists('/opt/python'):
+                    layer_contents = os.listdir('/opt/python')
+                    logger.info(f"Layer contents: {layer_contents}")
             
             # List installed packages for debugging
             try:
                 import pkg_resources
-                installed_packages = [d.project_name for d in pkg_resources.working_set]
-                logger.info(f"Installed packages: {installed_packages[:10]}...")  # Show first 10
-            except:
-                logger.info("Could not list installed packages")
+                installed_packages = [(d.project_name, d.version) for d in pkg_resources.working_set]
+                logger.info(f"Total packages installed: {len(installed_packages)}")
+                for name, version in installed_packages[:15]:  # Show first 15
+                    logger.info(f"  - {name}=={version}")
+                
+                # Check specifically for kiteconnect
+                kite_packages = [pkg for pkg in installed_packages if 'kite' in pkg[0].lower()]
+                logger.info(f"Kite-related packages: {kite_packages}")
+                
+            except Exception as pkg_error:
+                logger.warning(f"Could not list installed packages: {pkg_error}")
             
-            from kiteconnect import KiteConnect
-            logger.info("✅ KiteConnect imported successfully!")
+            # Try importing kiteconnect step by step
+            logger.info("Attempting to import kiteconnect...")
+            try:
+                import kiteconnect
+                logger.info(f"✅ kiteconnect module imported! Version: {getattr(kiteconnect, '__version__', 'unknown')}")
+                logger.info(f"kiteconnect module file: {kiteconnect.__file__}")
+                
+                from kiteconnect import KiteConnect
+                logger.info("✅ KiteConnect class imported successfully!")
+                
+            except ImportError as import_error:
+                logger.error(f"❌ Failed to import kiteconnect: {import_error}")
+                logger.info("Checking if kiteconnect files exist...")
+                
+                # Check common locations
+                possible_paths = ['/opt/python', '/var/task', '/var/runtime']
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        try:
+                            contents = os.listdir(path)
+                            kite_files = [f for f in contents if 'kite' in f.lower()]
+                            if kite_files:
+                                logger.info(f"Found kite files in {path}: {kite_files}")
+                        except:
+                            pass
+                
+                raise import_error
             
             if not config['kite_api_key']:
                 logger.warning("Kite API key not configured")

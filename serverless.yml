@@ -138,14 +138,14 @@ plugins:
 
 # Custom configuration
 custom:
-  # Python requirements configuration - Ultra minimal for KiteConnect
+  # Python requirements configuration - Use Layer for better compatibility
   pythonRequirements:
     dockerizePip: true
     fileName: lambda_functions/lambda_requirements.txt
-    # Optimize for KiteConnect installation
+    # Use Lambda Layer instead of inline packaging
+    layer: true
     slim: false
     strip: false
-    zip: true
     pipCmdExtraArgs:
       - --no-cache-dir
       - --verbose
