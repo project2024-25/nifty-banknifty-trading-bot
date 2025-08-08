@@ -17,7 +17,9 @@
       "Bash(grep:*)",
       "Bash(mv:*)",
       "Bash(npm install:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(chmod:*)",
+      "Bash(AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION=ap-south-1 ./cleanup-stack.sh)"
     ],
     "deny": []
   }

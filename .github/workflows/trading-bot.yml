@@ -289,98 +289,27 @@ jobs:
         serverless --version
         npm list -g serverless
         
-    - name: Handle DELETE_FAILED stack
+    - name: Check stack status
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: ap-south-1
       run: |
-        echo "🚨 Handling DELETE_FAILED CloudFormation stack..."
-        
-        # Check stack status
+        echo "🔍 Checking CloudFormation stack status..."
         STACK_STATUS=$(aws cloudformation describe-stacks --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "DOES_NOT_EXIST")
         echo "Current stack status: $STACK_STATUS"
         
         if [ "$STACK_STATUS" = "DELETE_FAILED" ]; then
-          echo "Stack is in DELETE_FAILED state, performing manual cleanup..."
-          
-          # Step 1: Empty and delete S3 buckets manually
-          echo "🗂️ Cleaning up S3 buckets..."
-          aws s3api list-buckets --query 'Buckets[?contains(Name, `nifty-banknifty-trading-bot-dev`)].Name' --output text 2>/dev/null | tr '\t' '\n' | while read bucket; do
-            if [ ! -z "$bucket" ]; then
-              echo "Processing bucket: $bucket"
-              aws s3 rm s3://$bucket --recursive --region ap-south-1 2>/dev/null || echo "Bucket $bucket not accessible"
-              aws s3api delete-bucket --bucket "$bucket" --region ap-south-1 2>/dev/null || echo "Could not delete bucket $bucket"
-            fi
-          done
-          
-          # Step 2: Delete Lambda functions manually
-          echo "⚡ Deleting Lambda functions..."
-          for func in mainTrading preMarketAnalysis postMarketReporting youtubeAnalysis healthCheck; do
-            FULL_NAME="nifty-banknifty-trading-bot-dev-$func"
-            aws lambda delete-function --function-name "$FULL_NAME" --region ap-south-1 2>/dev/null || echo "Function $FULL_NAME not found"
-          done
-          
-          # Step 3: Delete log groups manually
-          echo "📋 Deleting log groups..."
-          aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/nifty-banknifty-trading-bot-dev" --region ap-south-1 --query 'logGroups[*].logGroupName' --output text 2>/dev/null | tr '\t' '\n' | while read log_group; do
-            if [ ! -z "$log_group" ]; then
-              echo "Deleting log group: $log_group"
-              aws logs delete-log-group --log-group-name "$log_group" --region ap-south-1 2>/dev/null || echo "Log group already deleted"
-            fi
-          done
-          
-          # Step 4: Delete IAM role manually
-          echo "🔐 Deleting IAM resources..."
-          ROLE_NAME="nifty-banknifty-trading-bot-dev-ap-south-1-lambdaRole"
-          # Detach policies first
-          aws iam list-attached-role-policies --role-name "$ROLE_NAME" --query 'AttachedPolicies[*].PolicyArn' --output text 2>/dev/null | tr '\t' '\n' | while read policy; do
-            if [ ! -z "$policy" ]; then
-              aws iam detach-role-policy --role-name "$ROLE_NAME" --policy-arn "$policy" 2>/dev/null || echo "Policy $policy already detached"
-            fi
-          done
-          # Delete inline policies
-          aws iam list-role-policies --role-name "$ROLE_NAME" --query 'PolicyNames' --output text 2>/dev/null | tr '\t' '\n' | while read policy; do
-            if [ ! -z "$policy" ]; then
-              aws iam delete-role-policy --role-name "$ROLE_NAME" --policy-name "$policy" 2>/dev/null || echo "Inline policy $policy already deleted"
-            fi
-          done
-          # Delete the role
-          aws iam delete-role --role-name "$ROLE_NAME" 2>/dev/null || echo "Role $ROLE_NAME not found"
-          
-          # Step 5: Delete CloudWatch alarms
-          echo "⏰ Deleting CloudWatch alarms..."
-          aws cloudwatch describe-alarms --alarm-name-prefix "nifty-banknifty-trading-bot-dev" --region ap-south-1 --query 'MetricAlarms[*].AlarmName' --output text 2>/dev/null | tr '\t' '\n' | while read alarm; do
-            if [ ! -z "$alarm" ]; then
-              aws cloudwatch delete-alarms --alarm-names "$alarm" --region ap-south-1 2>/dev/null || echo "Alarm $alarm already deleted"
-            fi
-          done
-          
-          # Step 6: Delete SQS queues
-          echo "📨 Deleting SQS queues..."
-          aws sqs list-queues --queue-name-prefix "nifty-banknifty-trading-bot-dev" --region ap-south-1 --query 'QueueUrls' --output text 2>/dev/null | tr '\t' '\n' | while read queue_url; do
-            if [ ! -z "$queue_url" ]; then
-              aws sqs delete-queue --queue-url "$queue_url" --region ap-south-1 2>/dev/null || echo "Queue already deleted"
-            fi
-          done
-          
-          # Step 7: Force delete the stack after manual cleanup
-          echo "🗑️ Force deleting CloudFormation stack..."
-          aws cloudformation delete-stack --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 2>/dev/null || echo "Stack deletion command sent"
-          
-          # Step 8: Wait briefly then check if we need to continue
-          sleep 60
-          NEW_STATUS=$(aws cloudformation describe-stacks --stack-name nifty-banknifty-trading-bot-dev --region ap-south-1 --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "DELETED")
-          echo "Stack status after cleanup: $NEW_STATUS"
-          
+          echo "❌ Stack is in DELETE_FAILED state. Please run cleanup-stack.sh manually or use AWS Console to delete the stack."
+          echo "Then re-run this deployment."
+          exit 1
         elif [ "$STACK_STATUS" = "DOES_NOT_EXIST" ]; then
-          echo "✅ No stack found, ready for fresh deployment"
+          echo "✅ No existing stack found, ready for fresh deployment"
         else
-          echo "Stack status: $STACK_STATUS - attempting normal cleanup..."
-          serverless remove --stage dev --verbose --force || echo "Normal removal failed, continuing with deployment"
+          echo "ℹ️ Stack exists with status: $STACK_STATUS"
+          echo "Attempting normal serverless remove..."
+          serverless remove --stage dev --verbose || echo "Remove failed, continuing with deployment"
         fi
-        
-        echo "✅ Cleanup completed, proceeding with fresh deployment"
         
     - name: Deploy to Lambda
       env:
