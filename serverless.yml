@@ -1,0 +1,209 @@
+# Serverless Framework Configuration for Trading Bot
+# This configuration deploys your trading bot to AWS Lambda
+
+service: nifty-banknifty-trading-bot
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: ap-south-1  # Mumbai region for lower latency
+  stage: ${opt:stage, 'dev'}
+  memorySize: 512
+  timeout: 300  # 5 minutes timeout
+  
+  # IAM permissions
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: 
+            - 'arn:aws:logs:${self:provider.region}:*:log-group:/aws/lambda/*:*'
+        - Effect: Allow
+          Action:
+            - ssm:GetParameter
+            - ssm:GetParameters
+          Resource:
+            - 'arn:aws:ssm:${self:provider.region}:*:parameter/trading-bot/*'
+
+  # Environment variables (will be set via AWS Systems Manager)
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+    
+    # Trading configuration
+    TRADING_CAPITAL: ${env:TRADING_CAPITAL, '100000'}
+    MAX_DAILY_LOSS_PERCENT: ${env:MAX_DAILY_LOSS_PERCENT, '3'}
+    ENABLE_PAPER_TRADING: ${env:ENABLE_PAPER_TRADING, 'true'}
+    
+    # Kite Connect credentials (stored in AWS Parameter Store)
+    KITE_API_KEY: ${ssm:/trading-bot/kite/api-key}
+    KITE_API_SECRET: ${ssm:/trading-bot/kite/api-secret}
+    KITE_ACCESS_TOKEN: ${ssm:/trading-bot/kite/access-token}
+    
+    # Telegram credentials
+    TELEGRAM_BOT_TOKEN: ${ssm:/trading-bot/telegram/bot-token}
+    TELEGRAM_USER_ID: ${ssm:/trading-bot/telegram/user-id}
+    
+    # Database credentials
+    SUPABASE_URL: ${ssm:/trading-bot/supabase/url}
+    SUPABASE_KEY: ${ssm:/trading-bot/supabase/key}
+
+# Lambda functions
+functions:
+  # Main trading function - executes during market hours
+  mainTrading:
+    handler: lambda_functions/main_trading/lambda_function.lambda_handler
+    description: Main trading logic execution during market hours
+    events:
+      - schedule:
+          rate: rate(5 minutes)  # Every 5 minutes during market hours
+          enabled: true
+          input:
+            action: trading
+      # HTTP endpoint for manual triggering
+      - http:
+          path: trading/execute
+          method: post
+          private: false
+    layers:
+      - ${cf:trading-bot-dependencies.TradingBotDependenciesLayerExport}
+
+  # Pre-market analysis function
+  preMarketAnalysis:
+    handler: lambda_functions/pre_market/lambda_function.lambda_handler
+    description: Pre-market analysis and preparation
+    events:
+      - schedule:
+          rate: cron(30 3 ? * MON-FRI *)  # 9:00 AM IST (3:30 UTC)
+          enabled: true
+          input:
+            action: pre_market
+    layers:
+      - ${cf:trading-bot-dependencies.TradingBotDependenciesLayerExport}
+
+  # Post-market reporting function  
+  postMarketReporting:
+    handler: lambda_functions/reporting/lambda_function.lambda_handler
+    description: Post-market analysis and daily reporting
+    events:
+      - schedule:
+          rate: cron(0 11 ? * MON-FRI *)  # 4:30 PM IST (11:00 UTC)
+          enabled: true
+          input:
+            action: post_market
+    layers:
+      - ${cf:trading-bot-dependencies.TradingBotDependenciesLayerExport}
+
+  # YouTube analysis function
+  youtubeAnalysis:
+    handler: lambda_functions/youtube/lambda_function.lambda_handler
+    description: Analyze YouTube content for trading insights
+    events:
+      - schedule:
+          rate: cron(30 10 ? * MON-FRI *)  # 4:00 PM IST (10:30 UTC)
+          enabled: true
+          input:
+            action: youtube_analysis
+    layers:
+      - ${cf:trading-bot-dependencies.TradingBotDependenciesLayerExport}
+
+# CloudFormation resources
+resources:
+  Resources:
+    # CloudWatch Log Groups with retention
+    MainTradingLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/nifty-banknifty-trading-bot-${self:provider.stage}-mainTrading
+        RetentionInDays: 14
+
+    PreMarketLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/nifty-banknifty-trading-bot-${self:provider.stage}-preMarketAnalysis
+        RetentionInDays: 14
+
+    PostMarketLogGroup:
+      Type: AWS::Logs::LogGroup
+      Properties:
+        LogGroupName: /aws/lambda/nifty-banknifty-trading-bot-${self:provider.stage}-postMarketReporting
+        RetentionInDays: 14
+
+    # CloudWatch Alarms for monitoring
+    TradingErrorAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-${self:provider.stage}-trading-errors
+        AlarmDescription: Alert when trading function has errors
+        MetricName: Errors
+        Namespace: AWS/Lambda
+        Statistic: Sum
+        Period: 300
+        EvaluationPeriods: 1
+        Threshold: 1
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+        Dimensions:
+          - Name: FunctionName
+            Value: ${self:service}-${self:provider.stage}-mainTrading
+
+    # Dead Letter Queue for failed executions
+    TradingDLQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-dlq
+        MessageRetentionPeriod: 1209600  # 14 days
+
+# Plugins
+plugins:
+  - serverless-python-requirements
+  - serverless-plugin-aws-alerts
+
+# Custom configuration
+custom:
+  # Python requirements configuration
+  pythonRequirements:
+    dockerizePip: true
+    layer:
+      name: ${self:service}-dependencies
+      description: Dependencies for trading bot
+      compatibleRuntimes:
+        - python3.9
+      retain: false
+
+  # Alerts configuration
+  alerts:
+    stages:
+      - dev
+      - prod
+    topics:
+      alarm:
+        topic: ${self:service}-${self:provider.stage}-alerts
+        notifications:
+          - protocol: email
+            endpoint: ${env:ALERT_EMAIL, 'your-email@example.com'}
+    alarms:
+      - functionErrors
+      - functionThrottles
+      - functionInvocations
+
+# Package configuration
+package:
+  patterns:
+    - '!node_modules/**'
+    - '!.git/**'
+    - '!.vscode/**'
+    - '!tests/**'
+    - '!docs/**'
+    - '!*.md'
+    - '!.env*'
+    - '!venv/**'
+    - '!__pycache__/**'
+    - '!.pytest_cache/**'
+    - 'src/**'
+    - 'lambda_functions/**'
