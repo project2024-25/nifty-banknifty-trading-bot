@@ -12,7 +12,11 @@ import sys
 import signal
 from datetime import datetime
 from typing import Optional
-import uvloop  # For better async performance
+try:
+    import uvloop  # For better async performance
+    UVLOOP_AVAILABLE = True
+except ImportError:
+    UVLOOP_AVAILABLE = False
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
@@ -294,8 +298,8 @@ async def main():
             await server.shutdown()
 
 if __name__ == "__main__":
-    # Use uvloop for better performance
-    if sys.platform != 'win32':
+    # Use uvloop for better performance if available
+    if UVLOOP_AVAILABLE and sys.platform != 'win32':
         uvloop.install()
     
     logger.info("🎯 Starting Nifty/BankNifty Trading Bot Server")
