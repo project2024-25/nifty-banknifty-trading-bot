@@ -7,8 +7,7 @@ import json
 import os
 import sys
 import logging
-from datetime import datetime, time, timezone
-import pytz
+from datetime import datetime, time, timezone, timedelta
 from typing import Dict, Any
 
 # Add lambda functions to path
@@ -37,7 +36,8 @@ logger.setLevel(logging.INFO)
 def is_market_hours() -> bool:
     """Check if current time is within market hours (9:15 AM - 3:30 PM IST)."""
     try:
-        ist = pytz.timezone('Asia/Kolkata')
+        # Create IST timezone offset (+05:30)
+        ist = timezone(timedelta(hours=5, minutes=30))
         now = datetime.now(ist)
         
         # Skip weekends
