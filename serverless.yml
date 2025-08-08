@@ -22,14 +22,12 @@ provider:
             - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
-          Resource: 
-            - 'arn:aws:logs:${self:provider.region}:*:log-group:/aws/lambda/*:*'
+          Resource: '*'
         - Effect: Allow
           Action:
             - ssm:GetParameter
             - ssm:GetParameters
-          Resource:
-            - 'arn:aws:ssm:${self:provider.region}:*:parameter/trading-bot/*'
+          Resource: '*'
 
   # Environment variables
   environment:
@@ -74,36 +72,36 @@ functions:
 
   # Pre-market analysis function
   preMarketAnalysis:
-    handler: lambda_functions/pre_market/lambda_function.lambda_handler
+    handler: lambda_functions/main_trading/simple_handler.lambda_handler
     description: Pre-market analysis and preparation
     events:
       - schedule:
           rate: cron(30 3 ? * MON-FRI *)  # 9:00 AM IST (3:30 UTC)
           enabled: true
           input:
-            action: pre_market
+            action: analysis
 
   # Post-market reporting function  
   postMarketReporting:
-    handler: lambda_functions/reporting/lambda_function.lambda_handler
+    handler: lambda_functions/main_trading/simple_handler.lambda_handler
     description: Post-market analysis and daily reporting
     events:
       - schedule:
           rate: cron(0 11 ? * MON-FRI *)  # 4:30 PM IST (11:00 UTC)
           enabled: true
           input:
-            action: post_market
+            action: analysis
 
-  # YouTube analysis function
-  youtubeAnalysis:
-    handler: lambda_functions/youtube/lambda_function.lambda_handler
-    description: Analyze YouTube content for trading insights
+  # Health check function
+  healthCheck:
+    handler: lambda_functions/main_trading/simple_handler.lambda_handler
+    description: System health check and monitoring
     events:
       - schedule:
-          rate: cron(30 10 ? * MON-FRI *)  # 4:00 PM IST (10:30 UTC)
+          rate: cron(0 4 ? * MON-FRI *)  # 9:30 AM IST (4:00 UTC)
           enabled: true
           input:
-            action: youtube_analysis
+            action: health_check
 
 # CloudFormation resources
 resources:
