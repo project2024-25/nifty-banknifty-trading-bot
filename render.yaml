@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: nifty-banknifty-trading-bot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements-minimal.txt
+    startCommand: python simple_telegram_server.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_USER_ID
+        sync: false
+      - key: KITE_API_KEY
+        sync: false
+      - key: KITE_API_SECRET
+        sync: false
+      - key: KITE_ACCESS_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: ENABLE_PAPER_TRADING
+        value: "true"
+      - key: ENVIRONMENT
+        value: "production"
+      - key: PORT
+        value: "10000"
