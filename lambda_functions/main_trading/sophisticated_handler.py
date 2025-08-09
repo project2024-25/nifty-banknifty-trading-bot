@@ -59,7 +59,7 @@ except ImportError as import_error:
     logger.warning(f"⚠️ Sophisticated components not available: {import_error}")
     SOPHISTICATED_MODE = False
 
-# Fallback simplified components for when sophisticated imports fail
+# Enhanced fallback simplified components for when sophisticated imports fail
 if not SOPHISTICATED_MODE:
     class DatabaseManager:
         def __init__(self): 
@@ -69,29 +69,51 @@ if not SOPHISTICATED_MODE:
             self.supabase_key = os.getenv('SUPABASE_KEY', '')
         
         async def initialize(self):
+            logger.info("🔄 DatabaseManager fallback initialization starting...")
+            logger.info(f"   Supabase URL present: {bool(self.supabase_url)}")
+            logger.info(f"   Supabase Key present: {bool(self.supabase_key)}")
+            
             try:
                 # Try Supabase client first
                 try:
                     from supabase import create_client
                     if self.supabase_url and self.supabase_key:
+                        logger.info("🔄 Creating Supabase client...")
                         self.client = create_client(self.supabase_url, self.supabase_key)
-                        logger.info("✅ Supabase client initialized")
-                        return True
-                except ImportError:
-                    logger.info("Supabase client not available, using direct PostgreSQL")
+                        
+                        # Test the connection with a simple query
+                        try:
+                            # Try to access system_logs table as a connection test
+                            test_result = self.client.table('system_logs').select('id').limit(1).execute()
+                            logger.info("✅ Supabase client initialized and tested successfully")
+                            return True
+                        except Exception as test_error:
+                            logger.error(f"❌ Supabase connection test failed: {test_error}")
+                            return False
+                            
+                    else:
+                        logger.error("❌ Missing Supabase URL or Key")
+                        return False
+                        
+                except ImportError as import_error:
+                    logger.error(f"❌ Supabase package not available: {import_error}")
+                    logger.info("🔄 Attempting direct PostgreSQL fallback...")
                 
                 # Fallback to direct PostgreSQL connection
-                if self.supabase_url:
+                try:
                     import psycopg2
-                    # Extract PostgreSQL connection string from Supabase URL
-                    # Format: https://xxx.supabase.co -> postgresql://...
-                    if 'supabase.co' in self.supabase_url:
-                        # Use direct PostgreSQL approach for Lambda compatibility
-                        logger.info("✅ Database connection prepared (direct PostgreSQL)")
-                        return True
+                    if self.supabase_url and 'supabase.co' in self.supabase_url:
+                        logger.info("✅ PostgreSQL driver available (direct connection would need full credentials)")
+                        # Note: Direct PostgreSQL would need host, port, db, user, password
+                        # For now, we'll return False as we don't have those details
+                        return False
+                except ImportError:
+                    logger.error("❌ Neither supabase nor psycopg2 packages available")
                         
             except Exception as e:
-                logger.error(f"❌ Database initialization failed: {e}")
+                logger.error(f"❌ Database initialization failed with exception: {e}")
+                import traceback
+                logger.error(f"Full traceback: {traceback.format_exc()}")
             return False
         
         async def create_trade(self, trade_data):
@@ -254,15 +276,28 @@ class FullSophisticatedTradingEngine:
         self.db_manager = DatabaseManager()
     
     def _get_config(self) -> Dict[str, Any]:
-        """Get configuration from environment variables."""
+        """Get configuration from environment variables with enhanced debugging."""
+        
+        # Enhanced environment variable debugging for Lambda
+        kite_api_key = os.getenv('KITE_API_KEY', '')
+        supabase_url = os.getenv('SUPABASE_URL', '')
+        supabase_key = os.getenv('SUPABASE_KEY', '')
+        
+        # Log configuration status (without exposing sensitive data)
+        logger.info(f"🔧 Configuration loaded:")
+        logger.info(f"   Kite API Key: {'✅ Available' if kite_api_key else '❌ Missing'} ({len(kite_api_key)} chars)")
+        logger.info(f"   Supabase URL: {'✅ Available' if supabase_url else '❌ Missing'} ({'supabase.co' in supabase_url if supabase_url else 'N/A'})")
+        logger.info(f"   Supabase Key: {'✅ Available' if supabase_key else '❌ Missing'} ({len(supabase_key)} chars)")
+        logger.info(f"   Paper Trading: {os.getenv('ENABLE_PAPER_TRADING', 'true')}")
+        
         return {
-            'kite_api_key': os.getenv('KITE_API_KEY', ''),
+            'kite_api_key': kite_api_key,
             'kite_api_secret': os.getenv('KITE_API_SECRET', ''),
             'kite_access_token': os.getenv('KITE_ACCESS_TOKEN', ''),
-            'supabase_url': os.getenv('SUPABASE_URL', ''),
-            'supabase_key': os.getenv('SUPABASE_KEY', ''),
+            'supabase_url': supabase_url,
+            'supabase_key': supabase_key,
             'enable_paper_trading': os.getenv('ENABLE_PAPER_TRADING', 'true').lower() == 'true',
-            'trading_capital': float(os.getenv('TRADING_CAPITAL', '1000000')),
+            'trading_capital': float(os.getenv('TRADING_CAPITAL', '100000')),
             'telegram_user_id': int(os.getenv('TELEGRAM_USER_ID', '0')),
             'max_daily_loss_percent': float(os.getenv('MAX_DAILY_LOSS_PERCENT', '3'))
         }
@@ -270,13 +305,24 @@ class FullSophisticatedTradingEngine:
     async def initialize(self) -> bool:
         """Initialize all components"""
         try:
-            # Initialize database
+            # Initialize database with enhanced debugging
             if self.db_manager and self.config['supabase_url']:
-                db_success = await self.db_manager.initialize()
-                if db_success:
-                    logger.info("✅ Database connection established")
-                else:
-                    logger.warning("⚠️ Database connection failed")
+                logger.info(f"🔄 Attempting database initialization...")
+                logger.info(f"   URL configured: {bool(self.config['supabase_url'])}")
+                logger.info(f"   Key configured: {bool(self.config['supabase_key'])}")
+                
+                try:
+                    db_success = await self.db_manager.initialize()
+                    if db_success:
+                        logger.info("✅ Database connection established successfully")
+                    else:
+                        logger.error("❌ Database connection failed - initialize returned False")
+                except Exception as db_error:
+                    logger.error(f"❌ Database initialization exception: {db_error}")
+                    db_success = False
+            else:
+                logger.warning("⚠️ Database initialization skipped - missing URL or manager")
+                db_success = False
             
             # Initialize Kite Connect wrapper (sophisticated version)
             if self.config['kite_api_key'] and SOPHISTICATED_MODE:

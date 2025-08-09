@@ -4,7 +4,8 @@
 # Core Trading API (lightweight)
 kiteconnect==4.1.0
 
-# Database Integration (lightweight PostgreSQL)
+# Database Integration (Supabase client + PostgreSQL fallback)
+supabase==2.3.0
 psycopg2-binary==2.9.5
 
 # Essential Data Analysis (optimized versions)
