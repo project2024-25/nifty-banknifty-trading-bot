@@ -49,9 +49,11 @@ try:
     from src.intelligence.strategy_selector import AdaptiveStrategySelector
     from src.intelligence.dynamic_allocator import DynamicAllocationManager, AllocationMode
     from src.intelligence.dashboard_simple import SimpleMarketDashboard
+    from src.intelligence.multi_timeframe import MultiTimeframeAnalyzer
+    from src.integrations.kite_connect_wrapper import create_kite_wrapper
     
     SOPHISTICATED_MODE = True
-    logger.info("✅ Full sophisticated components imported successfully")
+    logger.info("✅ Full sophisticated components imported successfully (including multi-timeframe and Kite Connect)")
     
 except ImportError as import_error:
     logger.warning(f"⚠️ Sophisticated components not available: {import_error}")
@@ -217,12 +219,14 @@ if not SOPHISTICATED_MODE:
             })
 
 class FullSophisticatedTradingEngine:
-    """Full sophisticated trading engine with all features"""
+    """Full sophisticated trading engine with all features including Kite Connect and multi-timeframe analysis"""
     
     def __init__(self):
         self.config = self._get_config()
         self.db_manager = None
         self.kite_manager = None
+        self.kite_wrapper = None
+        self.multi_timeframe_analyzer = None
         self.sophisticated_mode = SOPHISTICATED_MODE
         
         # Initialize sophisticated components
@@ -274,8 +278,41 @@ class FullSophisticatedTradingEngine:
                 else:
                     logger.warning("⚠️ Database connection failed")
             
-            # Initialize Kite Connect
-            if self.config['kite_api_key']:
+            # Initialize Kite Connect wrapper (sophisticated version)
+            if self.config['kite_api_key'] and SOPHISTICATED_MODE:
+                try:
+                    self.kite_wrapper = create_kite_wrapper(
+                        api_key=self.config['kite_api_key'],
+                        api_secret=self.config.get('kite_api_secret', ''),
+                        access_token=self.config.get('kite_access_token'),
+                        paper_trading=self.config.get('enable_paper_trading', True)
+                    )
+                    
+                    # Initialize the wrapper
+                    kite_success = await self.kite_wrapper.authenticate()
+                    if kite_success:
+                        logger.info("✅ Sophisticated Kite Connect wrapper initialized successfully")
+                    else:
+                        logger.warning("⚠️ Kite Connect authentication failed, using paper trading mode")
+                    
+                    # Initialize multi-timeframe analyzer with Kite wrapper
+                    self.multi_timeframe_analyzer = MultiTimeframeAnalyzer(kite_wrapper=self.kite_wrapper)
+                    logger.info("✅ Multi-timeframe analyzer initialized")
+                    
+                except Exception as e:
+                    logger.error(f"❌ Sophisticated Kite Connect initialization failed: {e}")
+                    self.kite_wrapper = None
+                    
+                    # Initialize multi-timeframe analyzer without Kite (fallback mode)
+                    try:
+                        self.multi_timeframe_analyzer = MultiTimeframeAnalyzer()
+                        logger.info("✅ Multi-timeframe analyzer initialized in fallback mode")
+                    except Exception as analyzer_error:
+                        logger.error(f"❌ Multi-timeframe analyzer initialization failed: {analyzer_error}")
+                        self.multi_timeframe_analyzer = None
+            
+            # Fallback Kite Connect (original simple version)
+            elif self.config['kite_api_key']:
                 try:
                     import kiteconnect
                     from kiteconnect import KiteConnect
@@ -286,10 +323,10 @@ class FullSophisticatedTradingEngine:
                     
                     # Test connection
                     profile = self.kite_manager.profile()
-                    logger.info(f"✅ Kite Connect initialized for user: {profile.get('user_name', 'Unknown')}")
+                    logger.info(f"✅ Basic Kite Connect initialized for user: {profile.get('user_name', 'Unknown')}")
                     
                 except Exception as e:
-                    logger.error(f"❌ Kite Connect initialization failed: {e}")
+                    logger.error(f"❌ Basic Kite Connect initialization failed: {e}")
                     self.kite_manager = None
             
             return True
@@ -435,46 +472,126 @@ class FullSophisticatedTradingEngine:
             return self._create_error_result(error_msg)
     
     async def _fetch_comprehensive_market_data(self) -> Optional[Dict[str, Any]]:
-        """Fetch comprehensive market data"""
+        """Fetch comprehensive market data with multi-timeframe analysis"""
         try:
-            if not self.kite_manager or not self.config['kite_access_token']:
-                logger.warning("Kite manager not available, using mock data")
-                return {
+            market_data = {}
+            
+            # Basic market quotes
+            if self.kite_wrapper:
+                # Use sophisticated Kite wrapper
+                instruments = ['NIFTY', 'BANKNIFTY']
+                quotes = await self.kite_wrapper.get_quote(instruments)
+                positions = await self.kite_wrapper.get_positions()
+                
+                market_data = {
+                    'quotes': quotes,
+                    'positions': positions,
+                    'timestamp': get_ist_time().isoformat(),
+                    'data_source': 'sophisticated_kite'
+                }
+                
+            elif self.kite_manager and self.config.get('kite_access_token'):
+                # Use basic Kite manager
+                instruments = ['NSE:NIFTY 50', 'NSE:NIFTY BANK', 'NSE:NIFTY FIN SERVICE']
+                quotes = self.kite_manager.quote(instruments)
+                positions = self.kite_manager.positions()
+                
+                market_data = {
+                    'quotes': quotes,
+                    'positions': positions,
+                    'timestamp': get_ist_time().isoformat(),
+                    'data_source': 'basic_kite'
+                }
+                
+            else:
+                # Fallback to mock data
+                logger.warning("No Kite connection available, using mock data")
+                market_data = {
                     'quotes': {
-                        'NSE:NIFTY 50': {'last_price': 24500, 'net_change': 25},
-                        'NSE:NIFTY BANK': {'last_price': 52000, 'net_change': 150}
+                        'NIFTY': {'last_price': 25000, 'net_change': 125, 'buy_price': 24995, 'sell_price': 25005},
+                        'BANKNIFTY': {'last_price': 52000, 'net_change': 250, 'buy_price': 51990, 'sell_price': 52010}
                     },
-                    'positions': {'net': []},
-                    'timestamp': get_ist_time().isoformat()
+                    'positions': [],
+                    'timestamp': get_ist_time().isoformat(),
+                    'data_source': 'mock'
                 }
             
-            # Fetch real market data
-            instruments = ['NSE:NIFTY 50', 'NSE:NIFTY BANK', 'NSE:NIFTY FIN SERVICE']
-            quotes = self.kite_manager.quote(instruments)
-            positions = self.kite_manager.positions()
+            # Add multi-timeframe analysis if available
+            if self.multi_timeframe_analyzer:
+                try:
+                    logger.info("🔍 Performing multi-timeframe analysis...")
+                    
+                    # Analyze NIFTY
+                    nifty_analysis = await self.multi_timeframe_analyzer.analyze_symbol(
+                        'NIFTY', 
+                        use_real_data=(self.kite_wrapper is not None)
+                    )
+                    
+                    # Analyze BANKNIFTY
+                    banknifty_analysis = await self.multi_timeframe_analyzer.analyze_symbol(
+                        'BANKNIFTY',
+                        use_real_data=(self.kite_wrapper is not None)
+                    )
+                    
+                    # Add multi-timeframe data
+                    market_data['multi_timeframe'] = {
+                        'nifty': {
+                            'overall_trend': nifty_analysis.overall_trend,
+                            'confidence': nifty_analysis.overall_confidence,
+                            'market_regime': nifty_analysis.market_regime,
+                            'entry_zones': nifty_analysis.entry_zones,
+                            'risk_levels': nifty_analysis.risk_levels,
+                            'recommendations': nifty_analysis.recommendations,
+                            'timeframes': {tf: {'trend': signal.trend, 'strength': signal.strength, 'confidence': signal.confidence} 
+                                         for tf, signal in nifty_analysis.timeframes.items()}
+                        },
+                        'banknifty': {
+                            'overall_trend': banknifty_analysis.overall_trend,
+                            'confidence': banknifty_analysis.overall_confidence,
+                            'market_regime': banknifty_analysis.market_regime,
+                            'entry_zones': banknifty_analysis.entry_zones,
+                            'risk_levels': banknifty_analysis.risk_levels,
+                            'recommendations': banknifty_analysis.recommendations,
+                            'timeframes': {tf: {'trend': signal.trend, 'strength': signal.strength, 'confidence': signal.confidence}
+                                         for tf, signal in banknifty_analysis.timeframes.items()}
+                        },
+                        'analysis_timestamp': get_ist_time().isoformat()
+                    }
+                    
+                    logger.info(f"✅ Multi-timeframe analysis completed - NIFTY: {nifty_analysis.overall_trend} "
+                               f"({nifty_analysis.overall_confidence:.1%}), BANKNIFTY: {banknifty_analysis.overall_trend} "
+                               f"({banknifty_analysis.overall_confidence:.1%})")
+                    
+                except Exception as analysis_error:
+                    logger.error(f"❌ Multi-timeframe analysis failed: {analysis_error}")
+                    market_data['multi_timeframe'] = {'error': str(analysis_error)}
             
-            return {
-                'quotes': quotes,
-                'positions': positions,
-                'timestamp': get_ist_time().isoformat()
-            }
+            return market_data
             
         except Exception as e:
-            logger.error(f"Failed to fetch market data: {e}")
+            logger.error(f"Failed to fetch comprehensive market data: {e}")
             return None
     
     async def _send_full_sophisticated_notifications(self, regime_analysis, strategy_recommendations, market_data, signals_generated, trades_executed):
-        """Send comprehensive sophisticated notifications"""
+        """Send comprehensive sophisticated notifications with multi-timeframe analysis"""
         try:
             if not notifier:
                 return False
             
-            nifty_data = market_data.get('quotes', {}).get('NSE:NIFTY 50', {})
-            bank_nifty_data = market_data.get('quotes', {}).get('NSE:NIFTY BANK', {})
+            # Extract market data (handle both old and new format)
+            quotes = market_data.get('quotes', {})
+            nifty_data = quotes.get('NIFTY', quotes.get('NSE:NIFTY 50', {}))
+            bank_nifty_data = quotes.get('BANKNIFTY', quotes.get('NSE:NIFTY BANK', {}))
+            
+            # Get multi-timeframe analysis data
+            multi_tf_data = market_data.get('multi_timeframe', {})
+            nifty_mtf = multi_tf_data.get('nifty', {})
+            banknifty_mtf = multi_tf_data.get('banknifty', {})
             
             # Get top strategy recommendation
             top_strategy = max(strategy_recommendations.items(), key=lambda x: x[1].get('confidence', 0)) if strategy_recommendations else ('None', {})
             
+            # Build comprehensive message
             message = f"""🧠 **FULL SOPHISTICATED TRADING SYSTEM**
 
 📊 **Market Intelligence:**
@@ -482,14 +599,45 @@ class FullSophisticatedTradingEngine:
 • Volatility: {regime_analysis.get('volatility_regime', 'Unknown')}
 • Trend Strength: {regime_analysis.get('trend_strength', 0):.2f}
 
+📈 **Real-time Market Data:**
+• Nifty: ₹{nifty_data.get('last_price', 'N/A')} ({nifty_data.get('net_change', 0):+.1f})
+• Bank Nifty: ₹{bank_nifty_data.get('last_price', 'N/A')} ({bank_nifty_data.get('net_change', 0):+.1f})
+• Data Source: {market_data.get('data_source', 'Unknown').title()}
+
+🔍 **Multi-Timeframe Analysis:**"""
+            
+            # Add NIFTY multi-timeframe analysis
+            if nifty_mtf:
+                message += f"""
+📊 NIFTY: {nifty_mtf.get('overall_trend', '').upper()} ({nifty_mtf.get('confidence', 0):.1%})
+• Market Regime: {nifty_mtf.get('market_regime', 'Unknown')}
+• Entry Zones: {len(nifty_mtf.get('entry_zones', []))} identified
+• Risk Level: {nifty_mtf.get('risk_levels', {}).get('stop_loss', 0):.1%} SL"""
+            
+            # Add BANKNIFTY multi-timeframe analysis
+            if banknifty_mtf:
+                message += f"""
+🏦 BANKNIFTY: {banknifty_mtf.get('overall_trend', '').upper()} ({banknifty_mtf.get('confidence', 0):.1%})
+• Market Regime: {banknifty_mtf.get('market_regime', 'Unknown')}
+• Entry Zones: {len(banknifty_mtf.get('entry_zones', []))} identified
+• Risk Level: {banknifty_mtf.get('risk_levels', {}).get('stop_loss', 0):.1%} SL"""
+            
+            # Add timeframe breakdown if available
+            if nifty_mtf.get('timeframes'):
+                timeframes = nifty_mtf['timeframes']
+                message += f"""
+⏰ Timeframe Alignment (NIFTY):
+• 5min: {timeframes.get('5min', {}).get('trend', 'N/A')} ({timeframes.get('5min', {}).get('confidence', 0):.1%})
+• 15min: {timeframes.get('15min', {}).get('trend', 'N/A')} ({timeframes.get('15min', {}).get('confidence', 0):.1%})
+• 1hour: {timeframes.get('1hour', {}).get('trend', 'N/A')} ({timeframes.get('1hour', {}).get('confidence', 0):.1%})
+• Daily: {timeframes.get('daily', {}).get('trend', 'N/A')} ({timeframes.get('daily', {}).get('confidence', 0):.1%})"""
+            
+            message += f"""
+
 💡 **Strategy Engine:**
 • Top Strategy: {top_strategy[0]}
 • Strategy Confidence: {top_strategy[1].get('confidence', 0):.1%}
 • Rationale: {top_strategy[1].get('rationale', 'N/A')}
-
-📈 **Market Data:**
-• Nifty: ₹{nifty_data.get('last_price', 'N/A')} ({nifty_data.get('net_change', 0):+.1f})
-• Bank Nifty: ₹{bank_nifty_data.get('last_price', 'N/A')} ({bank_nifty_data.get('net_change', 0):+.1f})
 
 ⚡ **Execution Summary:**
 • Strategies Analyzed: {len(strategy_recommendations)}
@@ -500,16 +648,17 @@ class FullSophisticatedTradingEngine:
 🎯 **System Status:**
 • Engine: {'FULL SOPHISTICATED' if self.sophisticated_mode else 'FALLBACK SOPHISTICATED'}
 • Database: {'✅ Connected' if self.db_manager and self.db_manager.client else '❌ Disconnected'}
-• Kite API: {'✅ Connected' if self.kite_manager else '❌ Disconnected'}
+• Kite Connect: {'✅ Sophisticated' if self.kite_wrapper else '✅ Basic' if self.kite_manager else '❌ Disconnected'}
+• Multi-TF: {'✅ Active' if self.multi_timeframe_analyzer else '❌ Unavailable'}
 
 🕐 **Time:** {format_ist_time()} IST
 
-🚀 **Your Enterprise Trading System is Active!**"""
+🚀 **Your Enterprise Trading System with Multi-Timeframe Intelligence is Active!**"""
             
             return notifier.send_notification(message)
             
         except Exception as e:
-            logger.error(f"Failed to send notifications: {e}")
+            logger.error(f"Failed to send sophisticated notifications: {e}")
             return False
     
     def _create_error_result(self, error_message: str) -> Dict[str, Any]:

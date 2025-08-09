@@ -397,6 +397,155 @@ class KiteConnectWrapper:
             logger.error(f"Error fetching quotes: {e}")
             return {}
     
+    async def get_historical_data(self, symbol: str, start_date: datetime, 
+                                end_date: datetime, timeframe: str) -> List[Dict[str, Any]]:
+        """
+        Get historical OHLCV data from Kite Connect.
+        
+        Args:
+            symbol: Trading symbol
+            start_date: Start date for historical data
+            end_date: End date for historical data
+            timeframe: Timeframe (5min, 15min, 1hour, daily)
+            
+        Returns:
+            List of OHLCV candles
+        """
+        try:
+            if self.paper_trading:
+                base_price = 25000 if 'NIFTY' in symbol else 52000 if 'BANKNIFTY' in symbol else 100
+                if 'CE' in symbol or 'PE' in symbol:
+                    base_price = base_price * 0.01
+                return await self._generate_historical_data(base_price, start_date, end_date, timeframe)
+            
+            if not self.authenticated:
+                logger.warning("Not authenticated - cannot fetch historical data")
+                return []
+            
+            await self._rate_limit()
+            
+            # Convert timeframe to Kite format
+            kite_timeframe = self._convert_timeframe(timeframe)
+            
+            # Get instrument token (simplified - you'd need proper instrument master)
+            instrument_token = await self._get_instrument_token(symbol)
+            
+            historical_data = await self._safe_api_call(
+                self.kite.historical_data,
+                instrument_token,
+                from_date=start_date.date(),
+                to_date=end_date.date(),
+                interval=kite_timeframe
+            )
+            
+            if historical_data:
+                # Convert to standard format
+                return [
+                    {
+                        'timestamp': candle['date'],
+                        'open': candle['open'],
+                        'high': candle['high'],
+                        'low': candle['low'],
+                        'close': candle['close'],
+                        'volume': candle['volume']
+                    }
+                    for candle in historical_data
+                ]
+            
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error fetching historical data for {symbol}: {e}")
+            # Fallback to mock data
+            base_price = 25000 if 'NIFTY' in symbol else 52000 if 'BANKNIFTY' in symbol else 100
+            if 'CE' in symbol or 'PE' in symbol:
+                base_price = base_price * 0.01
+            return await self._generate_historical_data(base_price, start_date, end_date, timeframe)
+    
+    def _convert_timeframe(self, timeframe: str) -> str:
+        """Convert our timeframe format to Kite format."""
+        timeframe_map = {
+            '5min': '5minute',
+            '15min': '15minute',
+            '1hour': 'hour',
+            'daily': 'day',
+            'weekly': 'week'
+        }
+        return timeframe_map.get(timeframe, 'day')
+    
+    async def _get_instrument_token(self, symbol: str) -> int:
+        """
+        Get instrument token for symbol.
+        Note: This is simplified. In production, you'd use the instruments master file.
+        """
+        # Simplified mapping - you'd use proper instrument master
+        token_map = {
+            'NIFTY': 256265,      # NIFTY 50 index
+            'BANKNIFTY': 260105,  # NIFTY BANK index
+        }
+        
+        # For actual trading symbols, you'd need to:
+        # 1. Download instruments master file
+        # 2. Search for exact trading symbol
+        # 3. Return the instrument_token
+        
+        base_symbol = symbol.replace('CE', '').replace('PE', '')
+        for key in token_map:
+            if key in base_symbol:
+                return token_map[key]
+        
+        # Default fallback
+        return 256265
+    
+    async def _generate_historical_data(self, base_price: float, start_date: datetime, 
+                                      end_date: datetime, timeframe: str) -> List[Dict[str, Any]]:
+        """Generate realistic historical data for testing."""
+        data = []
+        current_price = base_price
+        current_time = start_date
+        
+        # Determine time delta based on timeframe
+        time_deltas = {
+            '5min': timedelta(minutes=5),
+            '15min': timedelta(minutes=15),
+            '1hour': timedelta(hours=1),
+            'daily': timedelta(days=1),
+            'weekly': timedelta(weeks=1)
+        }
+        
+        delta = time_deltas.get(timeframe, timedelta(hours=1))
+        
+        while current_time <= end_date:
+            # Generate realistic price movement
+            change_percent = (hash(f"{base_price}_{current_time.timestamp()}") % 200 - 100) / 10000
+            
+            open_price = current_price
+            change = open_price * change_percent
+            
+            high = open_price + abs(change) * 1.2
+            low = open_price - abs(change) * 1.2
+            close_price = open_price + change
+            
+            # Ensure high >= max(open, close) and low <= min(open, close)
+            high = max(high, open_price, close_price)
+            low = min(low, open_price, close_price)
+            
+            volume = 100000 + (hash(f"vol_{current_time.timestamp()}") % 50000)
+            
+            data.append({
+                'timestamp': current_time,
+                'open': round(open_price, 2),
+                'high': round(high, 2),
+                'low': round(low, 2),
+                'close': round(close_price, 2),
+                'volume': volume
+            })
+            
+            current_price = close_price
+            current_time += delta
+        
+        return data
+    
     async def cancel_order(self, order_id: str, variety: str = "regular") -> bool:
         """
         Cancel an existing order.
