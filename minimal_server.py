@@ -259,15 +259,14 @@ class HealthHandler(BaseHTTPRequestHandler):
                         f"• Lambda will redeploy automatically (3-5 minutes)\n"
                         f"• System will be ready for trading with new token\n"
                         f"• No manual intervention required!\n\n"
-                        f"🌟 **Your sophisticated trading system is now fully automated!**
-
-🧠 **Sophisticated Features Active:**
-• Market Intelligence Engine (8 regimes)
-• 11 Advanced Options Strategies  
-• Complete Database Integration
-• Portfolio Management with Kelly Criterion
-• Advanced Risk Management
-• Real-time Performance Analytics"
+                        f"🌟 **Your sophisticated trading system is now fully automated!**\n\n"
+                        f"🧠 **Sophisticated Features Active:**\n"
+                        f"• Market Intelligence Engine (8 regimes)\n"
+                        f"• 11 Advanced Options Strategies\n"
+                        f"• Complete Database Integration\n"
+                        f"• Portfolio Management with Kelly Criterion\n"
+                        f"• Advanced Risk Management\n"
+                        f"• Real-time Performance Analytics"
                     )
                 else:
                     self.server.trading_bot.send_telegram_notification(
