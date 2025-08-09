@@ -179,6 +179,10 @@ async def execute_kite_trading():
                         nifty_price = quotes.get('NSE:NIFTY 50', {}).get('last_price', 'N/A')
                         bank_nifty_price = quotes.get('NSE:NIFTY BANK', {}).get('last_price', 'N/A')
                         
+                        # Create IST timezone
+                        ist = timezone(timedelta(hours=5, minutes=30))
+                        ist_time = datetime.now(ist)
+                        
                         msg = f"""📊 **Live Trading Update**
                         
 🔗 **Kite Connected:** {profile.get('user_name', 'User')}
@@ -191,7 +195,7 @@ async def execute_kite_trading():
 • P&L: ₹{result['portfolio_value']:.2f}
 
 📱 **Mode:** {'Paper Trading' if config['enable_paper_trading'] else 'Live Trading'}
-🕐 **Time:** {datetime.now().strftime('%H:%M:%S IST')}"""
+🕐 **Time:** {ist_time.strftime('%H:%M:%S')} IST"""
                         
                         notifier.send_notification(msg)
                     
@@ -251,12 +255,17 @@ async def async_lambda_handler(event, context):
             if notifier:
                 notifier.send_notification(f"⏰ **Trading Bot Status**\n\n{message}")
             
+            # Create IST timezone
+            ist = timezone(timedelta(hours=5, minutes=30))
+            ist_time = datetime.now(ist)
+            
             return {
                 'statusCode': 200,
                 'body': json.dumps({
                     'status': 'skipped',
                     'reason': 'outside_market_hours',
-                    'timestamp': datetime.now().isoformat(),
+                    'timestamp': ist_time.isoformat(),
+                    'ist_time': ist_time.strftime('%Y-%m-%d %H:%M:%S IST'),
                     'execution_id': execution_id
                 })
             }
@@ -265,9 +274,14 @@ async def async_lambda_handler(event, context):
         if action in ['trading', 'analysis']:
             result = await execute_kite_trading()
         elif action == 'health_check':
+            # Create IST timezone
+            ist = timezone(timedelta(hours=5, minutes=30))
+            ist_time = datetime.now(ist)
+            
             result = {
                 'status': 'healthy',
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': ist_time.isoformat(),
+                'ist_time': ist_time.strftime('%Y-%m-%d %H:%M:%S IST'),
                 'config_available': bool(config['kite_api_key']),
                 'market_hours': is_market_hours(),
                 'execution_id': execution_id
@@ -277,6 +291,10 @@ async def async_lambda_handler(event, context):
         
         # Send success notification
         if notifier and action == 'trading':
+            # Create IST timezone
+            ist = timezone(timedelta(hours=5, minutes=30))
+            ist_time = datetime.now(ist)
+            
             success_msg = f"""✅ **Lambda Execution Complete**
 
 🎯 **Action:** {action.title()}
@@ -284,9 +302,13 @@ async def async_lambda_handler(event, context):
 📊 **Status:** {result.get('status', 'completed').title()}
 🆔 **ID:** {execution_id}
 
-⏱️ **Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}"""
+⏱️ **Time:** {ist_time.strftime('%Y-%m-%d %H:%M:%S')} IST"""
             
             notifier.send_notification(success_msg)
+        
+        # Create IST timezone for response
+        ist = timezone(timedelta(hours=5, minutes=30))
+        ist_time = datetime.now(ist)
         
         return {
             'statusCode': 200,
@@ -294,7 +316,8 @@ async def async_lambda_handler(event, context):
                 'status': 'success',
                 'action': action,
                 'result': result,
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': ist_time.isoformat(),
+                'ist_time': ist_time.strftime('%Y-%m-%d %H:%M:%S IST'),
                 'execution_id': execution_id
             })
         }
@@ -306,12 +329,17 @@ async def async_lambda_handler(event, context):
         if notifier:
             notifier.send_notification(f"🚨 **Trading Error**\n\n{error_msg}")
         
+        # Create IST timezone for error response
+        ist = timezone(timedelta(hours=5, minutes=30))
+        ist_time = datetime.now(ist)
+        
         return {
             'statusCode': 500,
             'body': json.dumps({
                 'status': 'error',
                 'error': str(e),
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': ist_time.isoformat(),
+                'ist_time': ist_time.strftime('%Y-%m-%d %H:%M:%S IST'),
                 'execution_id': execution_id
             })
         }
