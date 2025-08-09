@@ -67,7 +67,7 @@ if not SOPHISTICATED_MODE:
         
         async def initialize(self):
             try:
-                from supabase import create_client
+                from supabase import create_client, Client
                 if self.supabase_url and self.supabase_key:
                     self.client = create_client(self.supabase_url, self.supabase_key)
                     logger.info("✅ Fallback database initialized")

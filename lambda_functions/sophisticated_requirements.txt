@@ -1,38 +1,39 @@
 # Full Sophisticated Trading System Requirements for AWS Lambda
-# Optimized package versions for Lambda compatibility
+# Dependency-conflict-free versions while keeping ALL sophisticated features
 
 # Core Trading APIs
 kiteconnect==5.0.1
 requests==2.31.0
 python-dotenv==1.0.0
 
-# Database Integration
-supabase==2.3.4
-postgrest==0.16.2
+# Database Integration (compatible versions)
+supabase==2.0.0
+postgrest==0.15.0
 
-# Essential Data Analysis (Lambda optimized versions)
+# Essential Data Analysis (Lambda compatible)
 pandas==2.0.3
 numpy==1.24.4
 
 # Statistical Analysis for Market Intelligence
-scipy==1.11.4
-scikit-learn==1.3.2
+scipy==1.10.1
+scikit-learn==1.3.0
 
-# Configuration and Async
-pydantic==2.5.2
-pydantic-settings==2.1.0
-aiohttp==3.9.1
+# Configuration (compatible versions)
+pydantic==2.4.2
+pydantic-settings==2.0.3
+
+# Async HTTP (resolve conflicts)
+aiohttp==3.8.6
+httpx==0.24.1
 
 # Date/Time and Utilities
 python-dateutil==2.8.2
-pytz==2023.3.post1
-typing-extensions==4.8.0
+pytz==2023.3
+typing-extensions==4.7.1
 
-# HTTP and JSON Processing
-httpx==0.26.0
-urllib3==2.1.0
-certifi==2023.11.17
-ujson==5.9.0
+# HTTP and JSON Processing (compatible)
+urllib3==1.26.18
+certifi==2023.7.22
 
-# Optional: Financial Analysis (lightweight)
-yfinance==0.2.18
+# Lightweight JSON processing
+ujson==5.8.0
