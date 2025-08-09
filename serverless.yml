@@ -60,7 +60,6 @@ functions:
     description: Sophisticated trading engine with market intelligence and database integration
     timeout: 900  # 15 minutes for complex analysis
     memorySize: 1769  # Increased memory for sophisticated operations + large packages
-    reservedConcurrency: 5  # Limit concurrent executions to manage memory
     events:
       - schedule:
           rate: rate(5 minutes)  # Every 5 minutes during market hours
