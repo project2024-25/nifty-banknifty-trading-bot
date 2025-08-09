@@ -10,7 +10,7 @@ on:
       - 'src/**'
       - 'lambda_functions/**'
       - 'serverless.yml'
-      - 'lambda_functions/lambda_requirements.txt'
+      - 'lambda_functions/sophisticated_requirements.txt'
   workflow_dispatch: # Allow manual triggering
     inputs:
       stage:
