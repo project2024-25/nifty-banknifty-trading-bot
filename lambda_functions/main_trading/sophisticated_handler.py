@@ -7,10 +7,10 @@ import json
 import os
 import sys
 import logging
+import traceback
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
 import asyncio
-import traceback
 
 # Configure logging for Lambda
 logger = logging.getLogger()
@@ -37,26 +37,106 @@ except ImportError as e:
     notifier = None
     logger.warning(f"⚠️ Telegram notifier not available: {e}")
 
-# Import sophisticated components with fallbacks
+# Import sophisticated components with COMPREHENSIVE DIAGNOSTICS
+logger.info("🔍 LAMBDA DIAGNOSTIC: Starting sophisticated component imports...")
+
+# Log Lambda environment info
+logger.info(f"🔍 Python version: {sys.version}")
+logger.info(f"🔍 Python path: {sys.path[:3]}...")  # First 3 entries
+logger.info(f"🔍 Current working directory: {os.getcwd()}")
+logger.info(f"🔍 __file__ location: {__file__}")
+
+# Test package availability
+logger.info("🔍 PACKAGE AVAILABILITY TEST:")
+test_packages = ['supabase', 'kiteconnect', 'pandas', 'numpy', 'scipy', 'sklearn']
+for package in test_packages:
+    try:
+        __import__(package)
+        logger.info(f"✅ {package}: Available")
+    except ImportError as e:
+        logger.error(f"❌ {package}: Missing - {e}")
+
 try:
-    # Add source paths for sophisticated components
+    # Add source paths for sophisticated components with diagnostics
     current_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    logger.info(f"🔍 Calculated source directory: {current_dir}")
+    
+    # Check if source directory exists
+    src_dir = os.path.join(current_dir, 'src')
+    logger.info(f"🔍 Source directory exists: {os.path.exists(src_dir)}")
+    if os.path.exists(src_dir):
+        logger.info(f"🔍 Source directory contents: {os.listdir(src_dir)[:5]}")  # First 5 items
+    
     sys.path.insert(0, current_dir)
+    logger.info(f"🔍 Added to Python path: {current_dir}")
     
-    # Try importing sophisticated modules
-    from src.integrations.database import DatabaseManager
-    from src.intelligence.market_regime import MarketRegimeDetector
-    from src.intelligence.strategy_selector import AdaptiveStrategySelector
-    from src.intelligence.dynamic_allocator import DynamicAllocationManager, AllocationMode
-    from src.intelligence.dashboard_simple import SimpleMarketDashboard
-    from src.intelligence.multi_timeframe import MultiTimeframeAnalyzer
-    from src.integrations.kite_connect_wrapper import create_kite_wrapper
+    # Try importing each module individually with detailed error reporting
+    import_results = {}
     
-    SOPHISTICATED_MODE = True
-    logger.info("✅ Full sophisticated components imported successfully (including multi-timeframe and Kite Connect)")
+    modules_to_import = [
+        ('DatabaseManager', 'src.integrations.database', 'DatabaseManager'),
+        ('MarketRegimeDetector', 'src.intelligence.market_regime', 'MarketRegimeDetector'),
+        ('AdaptiveStrategySelector', 'src.intelligence.strategy_selector', 'AdaptiveStrategySelector'),
+        ('DynamicAllocationManager', 'src.intelligence.dynamic_allocator', 'DynamicAllocationManager'),
+        ('AllocationMode', 'src.intelligence.dynamic_allocator', 'AllocationMode'),
+        ('SimpleMarketDashboard', 'src.intelligence.dashboard_simple', 'SimpleMarketDashboard'),
+        ('MultiTimeframeAnalyzer', 'src.intelligence.multi_timeframe', 'MultiTimeframeAnalyzer'),
+        ('create_kite_wrapper', 'src.integrations.kite_connect_wrapper', 'create_kite_wrapper')
+    ]
     
-except ImportError as import_error:
-    logger.warning(f"⚠️ Sophisticated components not available: {import_error}")
+    successful_imports = {}
+    
+    for name, module_path, class_name in modules_to_import:
+        try:
+            logger.info(f"🔍 Attempting to import {name} from {module_path}")
+            
+            # Try the import
+            module = __import__(module_path, fromlist=[class_name])
+            class_obj = getattr(module, class_name)
+            successful_imports[name] = class_obj
+            
+            logger.info(f"✅ Successfully imported {name}")
+            import_results[name] = "SUCCESS"
+            
+        except ImportError as e:
+            logger.error(f"❌ Failed to import {name}: {e}")
+            import_results[name] = f"IMPORT_ERROR: {e}"
+        except AttributeError as e:
+            logger.error(f"❌ Failed to get {class_name} from {module_path}: {e}")
+            import_results[name] = f"ATTRIBUTE_ERROR: {e}"
+        except Exception as e:
+            logger.error(f"❌ Unexpected error importing {name}: {e}")
+            import_results[name] = f"UNEXPECTED_ERROR: {e}"
+    
+    # Log import summary
+    successful_count = len([r for r in import_results.values() if r == "SUCCESS"])
+    total_count = len(import_results)
+    
+    logger.info(f"🔍 Import summary: {successful_count}/{total_count} successful")
+    for name, result in import_results.items():
+        logger.info(f"   {name}: {result}")
+    
+    # Set up imports if we got enough successful imports
+    if successful_count >= 6:  # Need at least 6 core components
+        # Assign the successful imports
+        DatabaseManager = successful_imports.get('DatabaseManager')
+        MarketRegimeDetector = successful_imports.get('MarketRegimeDetector')
+        AdaptiveStrategySelector = successful_imports.get('AdaptiveStrategySelector')
+        DynamicAllocationManager = successful_imports.get('DynamicAllocationManager')
+        AllocationMode = successful_imports.get('AllocationMode')
+        SimpleMarketDashboard = successful_imports.get('SimpleMarketDashboard')
+        MultiTimeframeAnalyzer = successful_imports.get('MultiTimeframeAnalyzer')
+        create_kite_wrapper = successful_imports.get('create_kite_wrapper')
+        
+        SOPHISTICATED_MODE = True
+        logger.info(f"✅ SOPHISTICATED MODE ENABLED with {successful_count}/{total_count} components")
+    else:
+        SOPHISTICATED_MODE = False
+        logger.warning(f"⚠️ SOPHISTICATED MODE DISABLED - only {successful_count}/{total_count} components available")
+    
+except Exception as import_error:
+    logger.error(f"❌ Critical error in sophisticated import process: {import_error}")
+    logger.error(f"❌ Full traceback: {traceback.format_exc()}")
     SOPHISTICATED_MODE = False
 
 # Enhanced fallback simplified components for when sophisticated imports fail
@@ -278,16 +358,38 @@ class FullSophisticatedTradingEngine:
     def _get_config(self) -> Dict[str, Any]:
         """Get configuration from environment variables with enhanced debugging."""
         
+        # COMPREHENSIVE environment variable diagnostics
+        logger.info("🔍 ENVIRONMENT VARIABLE DIAGNOSTIC:")
+        
+        # Check all environment variables
+        all_env_vars = dict(os.environ)
+        trading_vars = {k: v for k, v in all_env_vars.items() if any(keyword in k.upper() for keyword in 
+                       ['KITE', 'SUPABASE', 'TELEGRAM', 'TRADING', 'PAPER'])}
+        
+        logger.info(f"🔍 Total environment variables: {len(all_env_vars)}")
+        logger.info(f"🔍 Trading-related variables found: {len(trading_vars)}")
+        
+        for var_name in trading_vars:
+            # Log existence without exposing values
+            value = trading_vars[var_name]
+            logger.info(f"🔍   {var_name}: {'✅ Set' if value else '❌ Empty'} ({len(value)} chars)")
+        
         # Enhanced environment variable debugging for Lambda
         kite_api_key = os.getenv('KITE_API_KEY', '')
+        kite_api_secret = os.getenv('KITE_API_SECRET', '')
+        kite_access_token = os.getenv('KITE_ACCESS_TOKEN', '')
         supabase_url = os.getenv('SUPABASE_URL', '')
         supabase_key = os.getenv('SUPABASE_KEY', '')
+        telegram_token = os.getenv('TELEGRAM_BOT_TOKEN', '')
         
         # Log configuration status (without exposing sensitive data)
-        logger.info(f"🔧 Configuration loaded:")
+        logger.info(f"🔧 CONFIGURATION LOADED:")
         logger.info(f"   Kite API Key: {'✅ Available' if kite_api_key else '❌ Missing'} ({len(kite_api_key)} chars)")
+        logger.info(f"   Kite API Secret: {'✅ Available' if kite_api_secret else '❌ Missing'} ({len(kite_api_secret)} chars)")
+        logger.info(f"   Kite Access Token: {'✅ Available' if kite_access_token else '❌ Missing'} ({len(kite_access_token)} chars)")
         logger.info(f"   Supabase URL: {'✅ Available' if supabase_url else '❌ Missing'} ({'supabase.co' in supabase_url if supabase_url else 'N/A'})")
         logger.info(f"   Supabase Key: {'✅ Available' if supabase_key else '❌ Missing'} ({len(supabase_key)} chars)")
+        logger.info(f"   Telegram Token: {'✅ Available' if telegram_token else '❌ Missing'} ({len(telegram_token)} chars)")
         logger.info(f"   Paper Trading: {os.getenv('ENABLE_PAPER_TRADING', 'true')}")
         
         return {
