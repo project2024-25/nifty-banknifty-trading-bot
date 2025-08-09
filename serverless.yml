@@ -54,10 +54,12 @@ provider:
 
 # Lambda functions
 functions:
-  # Main trading function - executes during market hours
+  # Main trading function - executes during market hours with sophisticated engine
   mainTrading:
-    handler: lambda_functions/main_trading/simple_handler.lambda_handler
-    description: Main trading logic execution during market hours
+    handler: lambda_functions/main_trading/sophisticated_handler.lambda_handler
+    description: Sophisticated trading engine with market intelligence and database integration
+    timeout: 900  # 15 minutes for complex analysis
+    memorySize: 1024  # Increased memory for sophisticated operations
     events:
       - schedule:
           rate: rate(5 minutes)  # Every 5 minutes during market hours
@@ -72,8 +74,10 @@ functions:
 
   # Pre-market analysis function
   preMarketAnalysis:
-    handler: lambda_functions/main_trading/simple_handler.lambda_handler
-    description: Pre-market analysis and preparation
+    handler: lambda_functions/main_trading/sophisticated_handler.lambda_handler
+    description: Pre-market analysis and preparation with market intelligence
+    timeout: 600  # 10 minutes for analysis
+    memorySize: 1024
     events:
       - schedule:
           rate: cron(30 3 ? * MON-FRI *)  # 9:00 AM IST (3:30 UTC)
@@ -83,8 +87,10 @@ functions:
 
   # Post-market reporting function  
   postMarketReporting:
-    handler: lambda_functions/main_trading/simple_handler.lambda_handler
-    description: Post-market analysis and daily reporting
+    handler: lambda_functions/main_trading/sophisticated_handler.lambda_handler
+    description: Post-market analysis and daily reporting with performance metrics
+    timeout: 600  # 10 minutes for reporting
+    memorySize: 1024
     events:
       - schedule:
           rate: cron(0 11 ? * MON-FRI *)  # 4:30 PM IST (11:00 UTC)
@@ -94,8 +100,8 @@ functions:
 
   # Health check function
   healthCheck:
-    handler: lambda_functions/main_trading/simple_handler.lambda_handler
-    description: System health check and monitoring
+    handler: lambda_functions/main_trading/sophisticated_handler.lambda_handler
+    description: System health check and monitoring with database connectivity
     events:
       - schedule:
           rate: cron(0 4 ? * MON-FRI *)  # 9:30 AM IST (4:00 UTC)
@@ -138,19 +144,28 @@ plugins:
 
 # Custom configuration
 custom:
-  # Python requirements configuration - Force inline packaging
+  # Python requirements configuration - Sophisticated system packages
   pythonRequirements:
     dockerizePip: true
-    fileName: lambda_functions/lambda_requirements.txt
-    # Force inline packaging - no layer
-    layer: false
-    slim: false
+    fileName: lambda_functions/sophisticated_requirements.txt
+    # Use Lambda Layer for large sophisticated packages
+    layer: 
+      name: ${self:service}-${self:provider.stage}-sophisticated-deps
+      description: "Sophisticated trading system dependencies"
+      compatibleRuntimes:
+        - python3.9
+      retain: false
+    slim: true
     strip: false
-    zip: false
+    zip: true
     pipCmdExtraArgs:
       - --no-cache-dir
       - --verbose
-      - --force-reinstall
+      - --platform=linux_x86_64
+      - --implementation=cp
+      - --python-version=3.9
+      - --only-binary=:all:
+      - --upgrade
     pythonBin: python3.9
 
   # Alerts configuration (disabled for simpler deployment)
