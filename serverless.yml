@@ -148,14 +148,15 @@ custom:
   pythonRequirements:
     dockerizePip: true
     fileName: lambda_functions/sophisticated_requirements.txt
-    # Use inline packaging for reliability
+    # Force inline packaging - same as working simple system
     layer: false
     slim: false
     strip: false
     zip: false
     pipCmdExtraArgs:
-      - "--no-cache-dir"
-      - "--force-reinstall"
+      - --no-cache-dir
+      - --verbose
+      - --force-reinstall
     pythonBin: python3.9
 
   # Alerts configuration (disabled for simpler deployment)

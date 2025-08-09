@@ -1,36 +1,15 @@
-# Streamlined Sophisticated Trading System Requirements
-# Essential packages only for AWS Lambda deployment
+# Ultra-Minimal Sophisticated Trading System Requirements
+# Only the most essential packages for Lambda deployment
 
 # Core API Dependencies
 kiteconnect==5.0.1
 requests==2.31.0
 python-dotenv==1.0.0
 
-# Database Integration
+# Database Integration  
 supabase==2.3.4
 
-# Essential Data Analysis (Lightweight versions)
-pandas==2.1.4
-numpy==1.24.4
-
-# Configuration Management
-pydantic==2.5.2
-pydantic-settings==2.1.0
-
-# Async Support
-aiohttp==3.9.1
-
-# Date/Time Utilities
+# Essential utilities
 python-dateutil==2.8.2
 pytz==2023.3.post1
-
-# JSON Processing
-ujson==5.9.0
-
-# HTTP Support
-httpx==0.26.0
-urllib3==2.1.0
-certifi==2023.11.17
-
-# Essential utilities
 typing-extensions==4.8.0
