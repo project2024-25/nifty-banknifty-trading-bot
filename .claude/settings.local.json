@@ -20,7 +20,12 @@
       "Bash(cp:*)",
       "Bash(chmod:*)",
       "Bash(AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION=ap-south-1 ./cleanup-stack.sh)",
-      "Bash(aws cloudformation describe-stacks:*)"
+      "Bash(aws cloudformation describe-stacks:*)",
+      "Bash(gh run list:*)",
+      "Bash(AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION=ap-south-1 aws lambda invoke --function-name nifty-banknifty-trading-bot-dev-mainTrading --payload '{\"\"action\"\": \"\"health_check\"\", \"\"force_run\"\": true}' response.json)",
+      "Bash(echo:*)",
+      "Bash(pip install:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }
