@@ -144,19 +144,25 @@ plugins:
 
 # Custom configuration
 custom:
-  # Python requirements configuration - Sophisticated system packages
+  # Python requirements configuration - Full sophisticated system
   pythonRequirements:
     dockerizePip: true
     fileName: lambda_functions/sophisticated_requirements.txt
-    # Force inline packaging - same as working simple system
-    layer: false
-    slim: false
+    # Use Lambda Layer for sophisticated packages (better than inline for large deps)
+    layer:
+      name: ${self:service}-${self:provider.stage}-sophisticated-layer
+      description: "Sophisticated trading system dependencies layer"
+      compatibleRuntimes:
+        - python3.9
+      retain: false
+    # Optimize for deployment size and speed
+    slim: true
     strip: false
-    zip: false
-    pipCmdExtraArgs:
-      - --no-cache-dir
-      - --verbose
-      - --force-reinstall
+    zip: true
+    noDeps:
+      # Exclude large packages that are available in Lambda runtime
+      - boto3
+      - botocore
     pythonBin: python3.9
 
   # Alerts configuration (disabled for simpler deployment)
