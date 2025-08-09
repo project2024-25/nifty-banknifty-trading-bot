@@ -148,24 +148,14 @@ custom:
   pythonRequirements:
     dockerizePip: true
     fileName: lambda_functions/sophisticated_requirements.txt
-    # Use Lambda Layer for large sophisticated packages
-    layer: 
-      name: ${self:service}-${self:provider.stage}-sophisticated-deps
-      description: "Sophisticated trading system dependencies"
-      compatibleRuntimes:
-        - python3.9
-      retain: false
-    slim: true
+    # Use inline packaging for reliability
+    layer: false
+    slim: false
     strip: false
-    zip: true
+    zip: false
     pipCmdExtraArgs:
-      - --no-cache-dir
-      - --verbose
-      - --platform=linux_x86_64
-      - --implementation=cp
-      - --python-version=3.9
-      - --only-binary=:all:
-      - --upgrade
+      - "--no-cache-dir"
+      - "--force-reinstall"
     pythonBin: python3.9
 
   # Alerts configuration (disabled for simpler deployment)
